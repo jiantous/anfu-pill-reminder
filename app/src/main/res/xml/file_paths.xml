@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 分享备份时把文件放在缓存目录，通过 FileProvider 暴露给其它 App -->
+    <cache-path name="backup" path="backup/" />
+</paths>

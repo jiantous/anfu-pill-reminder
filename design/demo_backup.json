@@ -1,0 +1,2366 @@
+{
+  "version": 2,
+  "exportedAt": "2026-08-05T12:30:00",
+  "appVersion": "1.0",
+  "medications": [
+    {
+      "id": "demo-vitd",
+      "name": "维生素 D3",
+      "dosage": 1.0,
+      "unit": "粒",
+      "note": "随早餐服用吸收更好",
+      "colorIndex": 5,
+      "iconIndex": 1,
+      "schedule": {
+        "type": "com.jian.pillreminder.data.Schedule.Daily"
+      },
+      "times": [
+        {
+          "hour": 8,
+          "minute": 0
+        }
+      ],
+      "mealRelation": "WITH_MEAL",
+      "startDate": "2026-06-06",
+      "endDate": null,
+      "remindersEnabled": true,
+      "stockRemaining": 42.0,
+      "stockThreshold": 5.0,
+      "archived": false,
+      "isSample": false
+    },
+    {
+      "id": "demo-calcium",
+      "name": "碳酸钙咀嚼片",
+      "dosage": 1.0,
+      "unit": "片",
+      "note": "",
+      "colorIndex": 1,
+      "iconIndex": 0,
+      "schedule": {
+        "type": "com.jian.pillreminder.data.Schedule.Daily"
+      },
+      "times": [
+        {
+          "hour": 8,
+          "minute": 30
+        },
+        {
+          "hour": 20,
+          "minute": 30
+        }
+      ],
+      "mealRelation": "AFTER_MEAL",
+      "startDate": "2026-06-06",
+      "endDate": null,
+      "remindersEnabled": true,
+      "stockRemaining": 6.0,
+      "stockThreshold": 8.0,
+      "archived": false,
+      "isSample": false
+    },
+    {
+      "id": "demo-fish",
+      "name": "深海鱼油",
+      "dosage": 2.0,
+      "unit": "粒",
+      "note": "",
+      "colorIndex": 0,
+      "iconIndex": 1,
+      "schedule": {
+        "type": "com.jian.pillreminder.data.Schedule.Daily"
+      },
+      "times": [
+        {
+          "hour": 13,
+          "minute": 0
+        }
+      ],
+      "mealRelation": "NONE",
+      "startDate": "2026-06-06",
+      "endDate": null,
+      "remindersEnabled": true,
+      "stockRemaining": 88.0,
+      "stockThreshold": 5.0,
+      "archived": false,
+      "isSample": false
+    },
+    {
+      "id": "demo-probio",
+      "name": "益生菌粉",
+      "dosage": 1.0,
+      "unit": "袋",
+      "note": "冲水后尽快喝完，别用热水",
+      "colorIndex": 6,
+      "iconIndex": 3,
+      "schedule": {
+        "type": "com.jian.pillreminder.data.Schedule.EveryNDays",
+        "intervalDays": 2
+      },
+      "times": [
+        {
+          "hour": 21,
+          "minute": 0
+        }
+      ],
+      "mealRelation": "EMPTY_STOMACH",
+      "startDate": "2026-06-06",
+      "endDate": null,
+      "remindersEnabled": true,
+      "stockRemaining": 15.0,
+      "stockThreshold": 5.0,
+      "archived": false,
+      "isSample": false
+    },
+    {
+      "id": "demo-eyedrop",
+      "name": "人工泪液",
+      "dosage": 1.0,
+      "unit": "滴",
+      "note": "开封后一个月内用完",
+      "colorIndex": 3,
+      "iconIndex": 5,
+      "schedule": {
+        "type": "com.jian.pillreminder.data.Schedule.WeekDays",
+        "daysOfWeek": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "times": [
+        {
+          "hour": 10,
+          "minute": 0
+        },
+        {
+          "hour": 16,
+          "minute": 0
+        }
+      ],
+      "mealRelation": "NONE",
+      "startDate": "2026-06-06",
+      "endDate": null,
+      "remindersEnabled": true,
+      "stockRemaining": null,
+      "stockThreshold": 5.0,
+      "archived": false,
+      "isSample": false
+    }
+  ],
+  "logs": [
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-06-27",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782518400000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-06-27",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782520260000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-06-27",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782563700000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-06-27",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782536460000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-06-28",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782605640000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-06-28",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782607020000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-06-28",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782650280000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-06-28",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782623640000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-06-28",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1782651960000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-06-29",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782691200000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-06-29",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782693660000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-06-29",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782736080000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-06-29",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782709440000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-06-29",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782699240000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-06-29",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782720600000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-06-30",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782777420000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-06-30",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782780120000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-06-30",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782823500000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-06-30",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782796500000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-06-30",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782825240000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-06-30",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782784740000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-01",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782864180000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-01",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782866520000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-01",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782908820000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-01",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782882840000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-01",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1782872220000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-01",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782893340000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-02",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782951240000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-02",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782951960000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-02",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782995460000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-02",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782968580000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-02",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782996960000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-02",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1782979740000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-03",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783037460000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-03",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783039200000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-03",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783054560000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-03",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783044660000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-03",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783065900000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-04",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783123140000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-04",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783126020000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-04",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783168920000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-04",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1783141560000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-04",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783171080000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-05",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783210200000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-05",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783211220000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-05",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783254360000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-05",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783227420000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-06",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783296480000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-06",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783297980000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-06",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783341300000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-06",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783314540000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-06",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783343700000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-06",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783303020000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-06",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783325820000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-07",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783382580000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-07",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783384200000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-07",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783427940000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-07",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1783400700000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-07",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783411560000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-08",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1783469880000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-08",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783470600000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-08",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783514760000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-08",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783516680000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-08",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783476780000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-08",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783497900000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-09",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783556160000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-09",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783557180000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-09",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783600440000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-09",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783573380000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-09",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783563480000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-09",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783585080000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-10",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783641660000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-10",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783644420000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-10",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1783686660000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-10",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783659660000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-10",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1783689120000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-10",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783649880000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-10",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783670880000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-11",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783728420000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-11",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783730400000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-11",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783773840000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-11",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783746060000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-12",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783814460000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-12",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783816980000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-12",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783860120000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-12",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783832940000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-12",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783861500000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-13",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783900980000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-13",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1783903140000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-13",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783946580000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-13",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783918680000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-13",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783908180000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-13",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1783929840000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-14",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783987680000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-14",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1783989060000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-14",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784032920000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-14",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784005860000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-14",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784034660000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-14",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1783994220000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-14",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784016480000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-15",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1784073840000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-15",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784076060000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-15",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784119200000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-15",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784091780000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-15",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784081220000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-15",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784103000000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-16",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784161080000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-16",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784161560000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-16",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784205660000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-16",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784178060000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-16",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784207400000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-16",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1784167620000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-16",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784189820000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-17",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784247300000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-17",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784248920000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-17",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784291820000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-17",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784265060000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-17",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1784253540000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-18",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784332560000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-18",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784334660000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-18",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784377860000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-18",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784351580000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-18",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784379480000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-19",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784419920000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-19",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784422020000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-19",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784464380000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-19",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784437680000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-20",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784506500000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-20",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784507460000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-20",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784550420000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-20",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784524500000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-20",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784552760000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-20",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784512680000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-20",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784534640000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-21",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784592120000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-21",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784594640000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-21",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784636940000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-21",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784610180000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-21",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784600280000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-21",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784620800000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-22",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784678340000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-22",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784680740000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-22",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784724240000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-22",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1784697060000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-22",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784726280000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-22",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1784686020000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-22",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1784707740000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-23",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1784765880000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-23",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784767620000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-23",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1784809680000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-23",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784782800000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-23",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784771820000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-24",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784852160000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-24",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784852820000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-24",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784896920000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-24",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784869800000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-24",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784897940000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-24",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784858640000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-24",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784880660000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-25",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784937600000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-25",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784939340000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-25",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1784982960000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-26",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785024060000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-26",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785026700000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-26",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785069960000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-26",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785042720000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-26",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785071460000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-27",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785111060000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-27",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785112860000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-27",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785155580000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-27",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1785128400000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-27",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785117960000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-27",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785139140000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-28",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785197520000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-28",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785199380000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-28",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785241620000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-28",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1785214980000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-28",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785244680000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-28",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785205020000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-28",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785226440000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-29",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785283980000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-29",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785285120000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-29",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785328020000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-29",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785291480000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-29",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785312840000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-30",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785369360000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-30",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785371460000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-30",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785414420000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-30",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785387840000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-07-30",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785417000000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-30",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785377640000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-30",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785398220000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-07-31",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785455820000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-07-31",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1785458520000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-07-31",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785474180000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-31",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785463140000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-07-31",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785484860000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-08-01",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785543360000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-08-01",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785544500000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-08-01",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785588180000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-08-01",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785589680000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-08-02",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785628620000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-08-02",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785631500000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-08-02",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785674040000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-08-02",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785647400000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-08-03",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785715200000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-08-03",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1785717480000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-08-03",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785761280000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-08-03",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785733500000
+    },
+    {
+      "medicationId": "demo-probio",
+      "date": "2026-08-03",
+      "time": {
+        "hour": 21,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1785761820000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-08-03",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785723000000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-08-03",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1785744540000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-08-04",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1785802320000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-08-04",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785804300000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-08-04",
+      "time": {
+        "hour": 20,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785846480000
+    },
+    {
+      "medicationId": "demo-fish",
+      "date": "2026-08-04",
+      "time": {
+        "hour": 13,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785820200000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-08-04",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785808980000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-08-04",
+      "time": {
+        "hour": 16,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785830160000
+    },
+    {
+      "medicationId": "demo-vitd",
+      "date": "2026-08-05",
+      "time": {
+        "hour": 8,
+        "minute": 0
+      },
+      "status": "SKIPPED",
+      "actedAtMillis": 1785888780000
+    },
+    {
+      "medicationId": "demo-calcium",
+      "date": "2026-08-05",
+      "time": {
+        "hour": 8,
+        "minute": 30
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785890340000
+    },
+    {
+      "medicationId": "demo-eyedrop",
+      "date": "2026-08-05",
+      "time": {
+        "hour": 10,
+        "minute": 0
+      },
+      "status": "TAKEN",
+      "actedAtMillis": 1785895980000
+    }
+  ],
+  "snoozeMinutes": 10
+}

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  单色层：Android 13+ 的主题图标（跟随壁纸取色）用这一层。
+  几何必须与 ic_launcher_foreground.xml 保持一致，否则彩色版和主题版会错位。
+  胶囊在这里是一整块——单色下双色分割和中缝都表现不出来。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <group android:pivotX="54" android:pivotY="48.82" android:rotation="-32">
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M42.81,39.58 L65.19,39.58 A9.25,9.25 0 0,1 65.19,58.07 L42.81,58.07 A9.25,9.25 0 0,1 42.81,39.58 Z" />
+    </group>
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M41.69,71.35 A2.68,2.68 0 1,1 47.04,71.35 A2.68,2.68 0 1,1 41.69,71.35 Z" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M51.32,71.35 A2.68,2.68 0 1,1 56.68,71.35 A2.68,2.68 0 1,1 51.32,71.35 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.45"
+        android:pathData="M60.96,71.35 A2.68,2.68 0 1,1 66.31,71.35 A2.68,2.68 0 1,1 60.96,71.35 Z" />
+</vector>
