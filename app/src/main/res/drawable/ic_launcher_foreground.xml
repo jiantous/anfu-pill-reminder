@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  自适应图标前景：108x108 画布，Pixel 自适应图标规范。
+
+  构成：-32° 斜置双色胶囊（长 40.88 高 18.49）+ 下方三个服药刻度点（两实一虚）。
+
+  几何（用 design/icon_balance.py 按像素实测，不是手算）：
+    内容包围盒 x 35.50..72.50、y 33.80..74.20
+    四周留白   上 33.80  下 33.80  左 35.50  右 35.50  —— 上下左右均对称
+    外接半径   27.39 / 安全区半径 33 = 83%，系统裁圆形 / 圆角方 / squircle 都不会切到内容
+
+  两次调整的由来：
+    · 刻度点原在 y=75.90（距胶囊下边界 19），两组元素显得脱节，收到 13.3。
+      也试过让点跟着胶囊斜轴右移，但点是"底部指示器"、自身该居中，右移反而失衡，
+      所以只收间距、不动水平位置。
+    · 收紧后内容整体偏上（上 32.60 / 下 34.90），全部 y 坐标 +1.15 做几何居中。
+  改动任何 y 坐标后，跑一遍 design/icon_balance.py 复核留白。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group android:pivotX="54" android:pivotY="48.82" android:rotation="-32">
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M42.81,39.58 L54,39.58 L54,58.07 L42.81,58.07 A9.25,9.25 0 0,1 42.81,39.58 Z" />
+        <path android:fillColor="#ABD8C3"
+            android:pathData="M54,39.58 L65.19,39.58 A9.25,9.25 0 0,1 65.19,58.07 L54,58.07 Z" />
+        <path android:fillColor="#E6F3EC"
+            android:pathData="M53.63,41.24 L54.37,41.24 L54.37,56.41 L53.63,56.41 Z" />
+    </group>
+
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M41.69,71.35 A2.68,2.68 0 1,1 47.04,71.35 A2.68,2.68 0 1,1 41.69,71.35 Z" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M51.32,71.35 A2.68,2.68 0 1,1 56.68,71.35 A2.68,2.68 0 1,1 51.32,71.35 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.41"
+        android:pathData="M60.96,71.35 A2.68,2.68 0 1,1 66.31,71.35 A2.68,2.68 0 1,1 60.96,71.35 Z" />
+
+</vector>

@@ -1,0 +1,27 @@
+# 构建产物
+build/
+app/build/
+.gradle/
+local.properties
+
+# 签名相关：绝对不要提交
+*.jks
+*.keystore
+keystore.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# 从手机拉下来的用药数据备份，属于个人健康信息
+_backups/
+
+# 设计工具生成的预览图（重新跑脚本即可再生成）
+design/*_compare.png
+design/med_icons_preview.png
+design/med_icons_small.png
+
+# Python 缓存
+__pycache__/
+*.pyc
