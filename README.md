@@ -53,8 +53,6 @@
 &nbsp;
 <img src="docs/screenshots/05_icons.jpg" width="24%" alt="图标与颜色" />
 &nbsp;
-<img src="docs/screenshots/06_scan.jpg" width="24%" alt="拍说明书" />
-&nbsp;
 <img src="docs/screenshots/08_scan_result.jpg" width="24%" alt="识别结果" />
 </div>
 
@@ -89,79 +87,6 @@ Android 7.0（API 24）及以上。
 - **文字识别在本地完成**。用 Google ML Kit 的中文识别模型，随安装包附带，不需要下载也不上传图片。拍下的照片识别完即丢弃。
 - **备份文件由你掌控**。导出的是未加密的纯文本 JSON，存到哪、给谁看完全由你决定。应用不会自动上传到任何地方。
 - 申请的权限只有三项：通知、精确闹钟、相机（仅在使用拍说明书功能时）。
-
-## 使用说明
-
-完整说明见 [《安服使用说明》PDF](docs/安服使用说明.pdf)，共 9 页，含界面截图、常见问题与免责说明。Releases 页面也附了这个文件。
-
-## 自行构建
-
-```bash
-git clone https://github.com/jiantous/anfu-pill-reminder.git
-cd anfu-pill-reminder
-
-# 指向你的 Android SDK
-echo "sdk.dir=/path/to/android/sdk" > local.properties
-
-# debug 包，直接可用
-./gradlew assembleDebug
-
-# 跑单元测试
-./gradlew testDebugUnitTest
-```
-
-Release 构建需要自己的签名密钥。在项目**外部**建一个目录放 `keystore.properties`：
-
-```properties
-storeFile=my-release.jks
-storePassword=...
-keyAlias=...
-keyPassword=...
-```
-
-`storeFile` 支持绝对路径，也支持相对该文件所在目录。构建脚本按以下顺序查找配置：
-
-1. 环境变量 `PILL_KEYSTORE_PROPS` 指向的完整路径
-2. 仓库同级的 `../AndroidKeys/keystore.properties`
-3. `~/AndroidKeys/keystore.properties`
-
-找不到时会跳过 release 签名，debug 构建不受影响。
-
-## 技术实现
-
-Kotlin + Jetpack Compose + Material 3，单 Activity，无第三方 UI 库。
-
-| | |
-| --- | --- |
-| 最低 / 目标 | API 24 / API 37 |
-| 界面 | Compose + Material 3，支持动态取色（Material You）与深色模式，edge-to-edge |
-| 提醒 | `AlarmManager.setExactAndAllowWhileIdle` + `RTC_WAKEUP`。一次性闹钟，触发后重排下一次；另有 6 小时周期的守护任务兜底，防止链条被系统中断后永久失效 |
-| 通知 | 闹钟类音频属性（`USAGE_ALARM`）+ `CATEGORY_ALARM`，以便在系统免打扰下仍能响 |
-| 数据 | kotlinx.serialization，单个 JSON 文件。写入用「临时文件 + 改名」防止写一半损坏；从广播接收器写入时同步落盘，避免进程被回收导致丢数据 |
-| OCR | ML Kit 中文文字识别（bundled 模型）+ CameraX。自研说明书解析器，保守提取：拿不准的字段留空交给用户填 |
-| 构建 | AGP 9 / Gradle 9，R8 混淆 + 资源压缩，按 ABI 拆分 APK |
-
-### 目录结构
-
-```
-app/src/main/java/com/jian/pillreminder/
-├── data/           数据模型、JSON 持久化、备份导入导出
-├── domain/         纯逻辑：排程计算、说明书解析、药名纠错
-├── notify/         闹钟排程、通知、广播接收、可靠性体检
-└── ui/             Compose 界面
-    ├── components/ 通用组件、按剂型分类的药品图标集
-    ├── screens/    今日 / 药箱 / 统计 / 编辑 / 扫描 / 备份 / 引导
-    └── theme/      配色与字体
-```
-
-### 测试
-
-79 个单元测试 + 3 个设备测试，覆盖排程计算、说明书解析、药名纠错、备份合并、数据迁移。
-
-```bash
-./gradlew testDebugUnitTest        # 单元测试
-./gradlew connectedAndroidTest     # 设备测试（会先卸载应用，注意数据）
-```
 
 ## 已知限制
 
