@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -721,28 +722,30 @@ private fun DateRow(
                 .format(DateTimeFormatter.ofPattern("yyyy 年 M 月 d 日"))
         }.getOrDefault(dateText)
     }
-    ListItem(
-        headlineContent = { Text(label) },
-        supportingContent = {
-            Column {
-                Text(pretty, style = MaterialTheme.typography.bodyLarge)
-                if (hint != null) {
-                    Text(
-                        hint,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+    // 不用 ListItem：它的 trailingContent 是单独测量的插槽，不是按整行高度算，
+    // 给图标包一层 fillMaxHeight 也撑不满——开始日期带 hint 更高、结束日期没有，
+    // 图标就跟着偏上/居中不一致。改成自己拼 Row，用 Alignment.CenterVertically
+    // 是相对 Row 实际高度算的，两行的图标才能真正对齐到同一条基准。
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleMedium)
+            Text(pretty, style = MaterialTheme.typography.bodyLarge)
+            if (hint != null) {
+                Text(
+                    hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-        },
-        trailingContent = {
-            Icon(Icons.Filled.EditCalendar, contentDescription = "修改$label")
-        },
-        colors = androidx.compose.material3.ListItemDefaults.colors(
-            containerColor = androidx.compose.ui.graphics.Color.Transparent
-        ),
-        modifier = Modifier.clickable(onClick = onClick)
-    )
+        }
+        Icon(Icons.Filled.EditCalendar, contentDescription = "修改$label")
+    }
 }
 
 @Composable
