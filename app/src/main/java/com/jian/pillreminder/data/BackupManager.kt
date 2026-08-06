@@ -11,6 +11,12 @@ import java.time.format.DateTimeFormatter
 
 /**
  * 备份文件的内容。带 version 便于以后格式升级时兼容旧备份。
+ *
+ * **刻意不备份的两样东西**：`doseOverrides`（临时挪了这一次的时间）和
+ * `deferredReminders`（稍后提醒）。它们是"本机、此刻"的状态——后者直接对应
+ * 本机 AlarmManager 里的一个槽位，搬到新手机上没有对应闹钟；前者最多只覆盖
+ * 今天明天，导进去等于让一次性调整凭空复活。药品上的 `pausedUntil` 不一样，
+ * 它是用药安排本身的一部分，跟着 Medication 一起走。
  */
 @Serializable
 data class BackupFile(
@@ -22,7 +28,12 @@ data class BackupFile(
     val appVersion: String = "",
     val medications: List<Medication> = emptyList(),
     val logs: List<DoseLog> = emptyList(),
-    val snoozeMinutes: Int = 10
+    val snoozeMinutes: Int = DEFAULT_SNOOZE_MINUTES,
+    /**
+     * 常驻通知开关。有默认值，所以旧备份缺这个字段照样能读，
+     * 读出来就是默认开启，不用升 version。
+     */
+    val ongoingNotification: Boolean = true
 ) {
     companion object {
         /**
@@ -71,7 +82,8 @@ object BackupManager {
             appVersion = appVersion,
             medications = data.medications,
             logs = data.logs,
-            snoozeMinutes = data.snoozeMinutes
+            snoozeMinutes = data.snoozeMinutes,
+            ongoingNotification = data.ongoingNotification
         )
         return json.encodeToString(backup)
     }
@@ -159,10 +171,15 @@ object BackupManager {
      *        服药记录按 (药, 日期, 时刻) 去重，取 actedAtMillis 更晚的那条。
      */
     fun apply(current: AppData, backup: BackupFile, mode: ImportMode): AppData = when (mode) {
+        // 顺手清掉临时状态：药品整批换掉后，原来"挪到 11:30 的那一次"
+        // 和待触发的稍后提醒都指向已经不存在的药，留着只会变成孤儿。
         ImportMode.REPLACE -> current.copy(
             medications = backup.medications,
             logs = backup.logs,
-            snoozeMinutes = backup.snoozeMinutes
+            snoozeMinutes = backup.snoozeMinutes,
+            ongoingNotification = backup.ongoingNotification,
+            doseOverrides = emptyList(),
+            deferredReminders = emptyList()
         )
 
         ImportMode.MERGE -> {
@@ -181,10 +198,16 @@ object BackupManager {
 
             // 合并后只保留仍有对应药品的记录，避免残留孤儿记录
             val validIds = medsById.keys
+            // MERGE 不删药，所以本机的临时状态仍然有效，原样留着；
+            // 过一遍 validIds 只是防御，理论上不会过滤掉任何东西。
+            // 开关类设置没法"合并"，只能二选一，沿用 snoozeMinutes 的老规矩：备份优先。
             current.copy(
                 medications = medsById.values.toList(),
                 logs = logsByKey.values.filter { it.medicationId in validIds },
-                snoozeMinutes = backup.snoozeMinutes
+                snoozeMinutes = backup.snoozeMinutes,
+                ongoingNotification = backup.ongoingNotification,
+                doseOverrides = current.doseOverrides.filter { it.medicationId in validIds },
+                deferredReminders = current.deferredReminders.filter { it.medicationId in validIds }
             )
         }
     }

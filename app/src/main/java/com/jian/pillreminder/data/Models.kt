@@ -76,8 +76,61 @@ data class Medication(
      * 示例药品，用于让新用户看到界面长什么样。
      * 界面上会标注「示例」并提供一键清除，避免和真实用药混淆。
      */
-    val isSample: Boolean = false
+    val isSample: Boolean = false,
+    /**
+     * 暂停到这一天为止（含当天），ISO-8601。null = 没暂停。
+     *
+     * 用于住院、出差、感冒停药这类临时情况：暂停期内不排闹钟、不上今日清单、
+     * 不计入依从率。刻意**不顺延疗程**——endDate 和周期锚点都不动，
+     * 恢复后接着原计划走，这样历史统计才解释得通。
+     */
+    val pausedUntil: String? = null
 )
+
+/**
+ * 一次被推迟的提醒——「稍后提醒」或用户临时改到的时间。
+ *
+ * 为什么要持久化：闹钟是一次性的，而 `Reminders.scheduleFor` 开头会无条件
+ * `cancelFor` 清掉这条药的所有闹钟槽位，包括延后槽。而 `rescheduleAll`
+ * 在每次回到前台、以及每 6 小时的守护任务里都会跑——也就是说「稍后提醒」
+ * 之后只要打开一次 App，那个延后闹钟就被静默清掉了，重启同样丢。
+ * 存下来，重排时就能原样重建。
+ */
+@Serializable
+data class DeferredReminder(
+    val medicationId: String,
+    /** 原定服药日期，ISO-8601。 */
+    val date: String,
+    /** 原定时刻，这次服药的身份键。 */
+    val originalTime: TimeOfDay,
+    /** 推迟到的绝对时间戳（毫秒）。用绝对时间而非"再等 N 分钟"，重排时才不会一直往后顺延。 */
+    val triggerAtMillis: Long
+) {
+    val key: String get() = "$medicationId|$date|${originalTime.format()}"
+}
+
+/**
+ * 某一次服药被临时挪到了别的时刻。
+ *
+ * 只影响这一次，不动 [Medication.times]。
+ *
+ * **[originalTime] 是这次服药的身份**：DoseLog、通知 id、闹钟 requestCode 全都由它推导。
+ * 挪动的只有实际响铃时间（[newTime]）。若把身份也改成新时刻，
+ * ScheduleEngine.dosesForDate 就再也匹配不上这条记录，它会变成孤儿、永远显示"已错过"。
+ */
+@Serializable
+data class DoseOverride(
+    val medicationId: String,
+    /** 计划服药日期，ISO-8601。 */
+    val date: String,
+    /** 原定时刻，这次服药的身份键。 */
+    val originalTime: TimeOfDay,
+    /** 实际要提醒的时刻。 */
+    val newTime: TimeOfDay
+) {
+    /** 与 DoseLog.key 同构，便于两边对照。 */
+    val key: String get() = "$medicationId|$date|${originalTime.format()}"
+}
 
 /** 一次服药的状态。 */
 enum class DoseStatus { PENDING, TAKEN, SKIPPED }
@@ -101,6 +154,17 @@ data class DoseLog(
     val key: String get() = "$medicationId|$date|${time.format()}"
 }
 
+/**
+ * 「稍后提醒」可选的延后分钟数。
+ *
+ * 和默认值放在一起，因为 [DEFAULT_SNOOZE_MINUTES] 必须是这个表的成员——
+ * 不是的话设置页会一个档位都不高亮。
+ */
+val SNOOZE_OPTIONS = listOf(5, 15, 30, 60)
+
+/** 默认延后档位。 */
+const val DEFAULT_SNOOZE_MINUTES = 15
+
 /** 整个 App 的持久化状态。 */
 @Serializable
 data class AppData(
@@ -115,8 +179,19 @@ data class AppData(
     val schemaVersion: Int = 0,
     val medications: List<Medication> = emptyList(),
     val logs: List<DoseLog> = emptyList(),
-    /** 通知提前/延后分钟数等设置可后续扩展。 */
-    val snoozeMinutes: Int = 10,
+    /** 临时挪过时刻的单次服药。过期的会在启动时清掉，见 MedRepository。 */
+    val doseOverrides: List<DoseOverride> = emptyList(),
+    /** 尚未触发的延后提醒（稍后提醒 / 临时改时间）。过期的会在启动时清掉。 */
+    val deferredReminders: List<DeferredReminder> = emptyList(),
+    /** 「稍后提醒」延后多少分钟。取值来自 [SNOOZE_OPTIONS]。 */
+    val snoozeMinutes: Int = DEFAULT_SNOOZE_MINUTES,
+    /**
+     * 服药通知是否常驻（不处理就不消失）。
+     *
+     * 开启后通知不能被划掉，只有点「已服用」「跳过」才会消失——
+     * 漏服的主因就是提醒响过一次就没了。默认开启，可在设置里关掉。
+     */
+    val ongoingNotification: Boolean = true,
     /** 是否已经走过首次的「提醒设置」引导。 */
     val setupGuideShown: Boolean = false,
     /** 用户选择了不再提示提醒相关的系统设置。 */

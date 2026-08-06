@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.jian.pillreminder.data.AppData
 import com.jian.pillreminder.data.DoseStatus
 import com.jian.pillreminder.data.BackupManager
+import com.jian.pillreminder.data.CsvExporter
 import com.jian.pillreminder.data.ImportMode
 import com.jian.pillreminder.data.MedRepository
 import com.jian.pillreminder.data.Medication
@@ -40,7 +41,7 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
 
     val dosesForSelectedDate: StateFlow<List<DoseItem>> =
         combine(repo.data, _selectedDate) { d, date ->
-            ScheduleEngine.dosesForDate(d.medications, d.logs, date)
+            ScheduleEngine.dosesForDate(d.medications, d.logs, date, d.doseOverrides)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val activeMedications: StateFlow<List<Medication>> =
@@ -142,13 +143,15 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
         val d = repo.data.value
         val end = LocalDate.now()
         val start = end.minusDays((days - 1).toLong())
-        return ScheduleEngine.adherence(d.medications, d.logs, start, end, LocalDateTime.now())
+        return ScheduleEngine.adherence(
+            d.medications, d.logs, start, end, LocalDateTime.now(), d.doseOverrides
+        )
     }
 
     /** 某天的完成情况，用于日历上色。 */
     fun dayStatus(date: LocalDate): DayStatus {
         val d = repo.data.value
-        val items = ScheduleEngine.dosesForDate(d.medications, d.logs, date)
+        val items = ScheduleEngine.dosesForDate(d.medications, d.logs, date, d.doseOverrides)
         if (items.isEmpty()) return DayStatus.NONE
         val taken = items.count { it.status == DoseStatus.TAKEN }
         val nowTime = LocalDateTime.now()
@@ -166,9 +169,64 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setSnoozeMinutes(minutes: Int) = repo.setSnoozeMinutes(minutes)
 
+    fun setOngoingNotification(on: Boolean) = repo.setOngoingNotification(on)
+
     fun markSetupGuideShown() = repo.markSetupGuideShown()
 
     fun dismissHealthBanner() = repo.setHealthBannerDismissed(true)
+
+    // ---- 暂停用药 ----
+
+    /**
+     * 暂停到 [until]（含当天）。传 null 立即恢复。
+     *
+     * 设置的同时要撤掉已排的闹钟和已弹出的通知——否则暂停期内旧闹钟照样会响，
+     * 通知栏上那条也还挂着。这和 [toggleArchived] 是同一套处理。
+     */
+    fun setPaused(med: Medication, until: LocalDate?) {
+        repo.setPausedUntil(med.id, until?.toString())
+        // 用更新后的数据重排：scheduleFor 开头会先 cancelFor 清掉旧闹钟，
+        // 然后按 nextOccurrence 排下一次——它会自动跳过暂停期，
+        // 所以暂停和恢复都只需要这一次调用。
+        val updated = repo.data.value.medications.firstOrNull { it.id == med.id } ?: return
+        Reminders.scheduleFor(getApplication(), updated)
+        // 通知栏上可能还挂着这条药的提醒，暂停了就该收掉
+        if (until != null) Reminders.dismissAllFor(getApplication(), updated)
+    }
+
+    fun isPaused(med: Medication): Boolean = ScheduleEngine.isPausedNow(med)
+
+    // ---- 临时改这次的时间 ----
+
+    /** 把某一次服药挪到今天的另一个时刻。 */
+    fun rescheduleDose(item: DoseItem, newTime: TimeOfDay) {
+        Reminders.rescheduleOneDose(
+            getApplication(), item.medication, item.time, item.date.toString(), newTime
+        )
+    }
+
+    /** 撤销挪动，回到原定时刻。 */
+    fun clearDoseReschedule(item: DoseItem) {
+        Reminders.clearOneDoseReschedule(
+            getApplication(), item.medication, item.time, item.date.toString()
+        )
+    }
+
+    // ---- CSV 导出 ----
+
+    /** [days] 为 null 表示导出全部历史。 */
+    fun buildCsvContent(days: Int?): String {
+        val d = repo.data.value
+        val today = LocalDate.now()
+        val start = if (days == null) CsvExporter.earliestDate(d, today)
+        else today.minusDays((days - 1).toLong())
+        return CsvExporter.build(d, start, today)
+    }
+
+    fun suggestCsvFileName(): String = CsvExporter.suggestFileName()
+
+    /** 设置页上显示"有多少条记录可导出"。 */
+    fun logCount(): Int = repo.data.value.logs.size
 
     // ---- 备份 ----
 
