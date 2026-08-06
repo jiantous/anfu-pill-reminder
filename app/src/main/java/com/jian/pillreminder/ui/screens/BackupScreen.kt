@@ -73,7 +73,8 @@ fun BackupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("备份与换机") },
+                // 和三点菜单里的入口同名，别一个叫"备份"另一个叫"备份与换机"
+                title = { Text("备份") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Card
@@ -65,6 +66,7 @@ import com.jian.pillreminder.ui.MedViewModel
 import com.jian.pillreminder.ui.components.CheckCircle
 import com.jian.pillreminder.ui.components.EmptyState
 import com.jian.pillreminder.ui.components.MedBadge
+import com.jian.pillreminder.ui.components.TimePickerDialog
 import com.jian.pillreminder.ui.theme.medColorAt
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -83,6 +85,9 @@ fun TodayScreen(
     val date by vm.selectedDate.collectAsState()
     val now by vm.now.collectAsState()
     val lowStock by vm.lowStockMedications.collectAsState()
+
+    // 正在挪时间的那一次服药，null = 没在挪
+    var rescheduling by remember { mutableStateOf<DoseItem?>(null) }
 
     LaunchedEffect(Unit) { vm.refreshNow() }
 
@@ -149,25 +154,65 @@ fun TodayScreen(
         if (overdue.isNotEmpty()) {
             item { GroupLabel("已错过", overdue.size, MaterialTheme.colorScheme.error) }
             items(overdue, key = { it.key }) { item ->
-                DoseCard(item, now, onToggle = { vm.toggleTaken(item) }, onSkip = { vm.markSkipped(item) }, onOpen = { onOpenMedication(item.medication.id) })
+                DoseCard(
+                    item, now,
+                    onToggle = { vm.toggleTaken(item) },
+                    onSkip = { vm.markSkipped(item) },
+                    onOpen = { onOpenMedication(item.medication.id) },
+                    onReschedule = { rescheduling = item },
+                    onClearReschedule = { vm.clearDoseReschedule(item) }
+                )
             }
         }
 
         if (pending.isNotEmpty()) {
             item { GroupLabel("待服用", pending.size, MaterialTheme.colorScheme.primary) }
             items(pending, key = { it.key }) { item ->
-                DoseCard(item, now, onToggle = { vm.toggleTaken(item) }, onSkip = { vm.markSkipped(item) }, onOpen = { onOpenMedication(item.medication.id) })
+                DoseCard(
+                    item, now,
+                    onToggle = { vm.toggleTaken(item) },
+                    onSkip = { vm.markSkipped(item) },
+                    onOpen = { onOpenMedication(item.medication.id) },
+                    onReschedule = { rescheduling = item },
+                    onClearReschedule = { vm.clearDoseReschedule(item) }
+                )
             }
         }
 
         if (done.isNotEmpty()) {
             item { GroupLabel("已完成", done.size, MaterialTheme.colorScheme.onSurfaceVariant) }
             items(done, key = { it.key }) { item ->
-                DoseCard(item, now, onToggle = { vm.toggleTaken(item) }, onSkip = { vm.markSkipped(item) }, onOpen = { onOpenMedication(item.medication.id) })
+                DoseCard(
+                    item, now,
+                    onToggle = { vm.toggleTaken(item) },
+                    onSkip = { vm.markSkipped(item) },
+                    onOpen = { onOpenMedication(item.medication.id) },
+                    onReschedule = { rescheduling = item },
+                    onClearReschedule = { vm.clearDoseReschedule(item) }
+                )
             }
         }
 
         item { Spacer(Modifier.height(72.dp)) }
+    }
+
+    // 临时改这次的时间。挪过的先给撤销选项，免得用户找不到怎么恢复。
+    rescheduling?.let { item ->
+        val base = item.effectiveTime
+        TimePickerDialog(
+            initialHour = base.hour,
+            initialMinute = base.minute,
+            title = "改这一次的时间",
+            supportingText = if (item.movedTo != null)
+                "原定 ${item.time.format()}，现在是 ${item.movedTo.format()}。" +
+                    "只影响这一次，不改用药计划。"
+            else "只改今天这一次，不影响以后的提醒时间。",
+            onDismiss = { rescheduling = null },
+            onConfirm = { h, m ->
+                vm.rescheduleDose(item, com.jian.pillreminder.data.TimeOfDay(h, m))
+                rescheduling = null
+            }
+        )
     }
 }
 
@@ -221,8 +266,10 @@ private fun ProgressSummary(taken: Int, total: Int) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
+                    // 刻意不放 emoji：它由系统字体渲染，颜色和字重都跟不上主题，
+                    // 在这张深色卡片上很突兀。文字本身已经说清楚了。
                     Text(
-                        if (taken == total) "今天的药都吃完了 🎉" else "今日进度",
+                        if (taken == total) "今天的药都吃完了" else "今日进度",
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(Modifier.height(2.dp))
@@ -309,7 +356,9 @@ private fun DoseCard(
     now: java.time.LocalDateTime,
     onToggle: () -> Unit,
     onSkip: () -> Unit,
-    onOpen: () -> Unit
+    onOpen: () -> Unit,
+    onReschedule: () -> Unit,
+    onClearReschedule: () -> Unit
 ) {
     val med = item.medication
     val palette = medColorAt(med.colorIndex)
@@ -370,10 +419,24 @@ private fun DoseCard(
                     Spacer(Modifier.height(2.dp))
                     val dose = Reminders.formatDosage(med.dosage) + med.unit
                     val meal = if (med.mealRelation.label == "无要求") "" else " · ${med.mealRelation.label}"
+                    // 挪过时间的把原定时刻划掉再写新的，一眼能看出这次是临时调整过的
                     Text(
-                        "${item.time.format()} · $dose$meal",
+                        buildString {
+                            if (item.movedTo != null) {
+                                append(item.movedTo.format())
+                                append("（原 ")
+                                append(item.time.format())
+                                append("）")
+                            } else {
+                                append(item.time.format())
+                            }
+                            append(" · ")
+                            append(dose)
+                            append(meal)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (item.movedTo != null) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(Modifier.width(8.dp))
@@ -404,10 +467,25 @@ private fun DoseCard(
                     Modifier.fillMaxWidth().padding(top = 6.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
+                    // 挪过的给一个撤销入口，否则用户找不到怎么恢复
+                    if (item.movedTo != null) {
+                        TextButton(onClick = onClearReschedule) { Text("恢复原时间") }
+                    }
+                    // 「改时间」用图标按钮：三个文字按钮挤一行会太窄，
+                    // 而挪时间是相对少用的操作
+                    IconButton(onClick = onReschedule) {
+                        Icon(
+                            Icons.Filled.Schedule,
+                            contentDescription = "临时改这次的时间",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (item.movedTo != null) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     TextButton(onClick = onSkip) {
                         Icon(Icons.Filled.SkipNext, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("跳过这次")
+                        Text("跳过")
                     }
                     Spacer(Modifier.width(4.dp))
                     FilledTonalButton(onClick = onToggle) {

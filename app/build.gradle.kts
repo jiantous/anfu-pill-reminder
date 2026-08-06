@@ -43,8 +43,15 @@ android {
         applicationId = "com.jian.pillreminder"
         minSdk = 24
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        // versionCode 每次对外发布都必须 +1，否则用户装不上——Android 会拒绝
+        // 同版本号或降级覆盖（INSTALL_FAILED_VERSION_DOWNGRADE）。
+        // 它和 versionName 无关，只是个递增整数，发过就不能重复用。
+        //
+        // 1 = 1.0  首个发布版
+        // 2 = 1.1  暂停用药、临时改时间、CSV 导出、设置页、关于页；
+        //          修复稍后提醒被静默清掉、示例药会排真闹钟；日期时间改手填
+        versionCode = 2
+        versionName = "1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

@@ -12,6 +12,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.time.LocalDate
 
 /**
  * 单文件 JSON 持久化。读写都在 IO 线程，UI 只观察 [data]。
@@ -33,12 +34,36 @@ class MedRepository private constructor(private val file: File) {
     private fun loadBlocking(): AppData =
         runCatching {
             if (file.exists() && file.length() > 0) {
-                migrate(json.decodeFromString<AppData>(file.readText()))
+                pruneStale(migrate(json.decodeFromString<AppData>(file.readText())))
             } else {
                 // 全新安装：直接标成当前版本，不需要迁移
                 AppData(schemaVersion = CURRENT_SCHEMA)
             }
         }.getOrElse { AppData(schemaVersion = CURRENT_SCHEMA) }
+
+    /**
+     * 清掉过期的临时状态。每次启动都跑（不像 migrate 只跑一次）。
+     *
+     * 临时改时间和延后提醒都是单次的，只对某一天有效。不清理的话
+     * 这两个列表会随使用无限增长，而且过期的延后提醒会在重排时被错误地重新排上。
+     */
+    private fun pruneStale(data: AppData, today: LocalDate = LocalDate.now()): AppData {
+        // 昨天以前的临时改时间已经没有意义
+        val keepFrom = today.minusDays(1).toString()
+        val overrides = data.doseOverrides.filter { it.date >= keepFrom }
+        // 触发时刻已过的延后提醒：要么已经响过，要么错过了，都不该再排
+        val nowMillis = System.currentTimeMillis()
+        val deferred = data.deferredReminders.filter { it.triggerAtMillis > nowMillis }
+
+        if (overrides.size == data.doseOverrides.size &&
+            deferred.size == data.deferredReminders.size
+        ) {
+            return data
+        }
+        val cleaned = data.copy(doseOverrides = overrides, deferredReminders = deferred)
+        persist(cleaned, sync = true)
+        return cleaned
+    }
 
     /**
      * 老数据格式升级。每一步都要能在"已经是新版"的数据上安全跳过，
@@ -104,7 +129,10 @@ class MedRepository private constructor(private val file: File) {
     fun deleteMedication(id: String) = update { d ->
         d.copy(
             medications = d.medications.filterNot { it.id == id },
-            logs = d.logs.filterNot { it.medicationId == id }
+            logs = d.logs.filterNot { it.medicationId == id },
+            // 一并清掉临时状态，否则会留下指向已删药品的孤儿记录
+            doseOverrides = d.doseOverrides.filterNot { it.medicationId == id },
+            deferredReminders = d.deferredReminders.filterNot { it.medicationId == id }
         )
     }
 
@@ -163,6 +191,62 @@ class MedRepository private constructor(private val file: File) {
     }
 
     fun setSnoozeMinutes(minutes: Int) = update { it.copy(snoozeMinutes = minutes) }
+
+    fun setOngoingNotification(on: Boolean) = update { it.copy(ongoingNotification = on) }
+
+    // ---- 暂停用药 ----
+
+    /** [until] 为 null 表示立即恢复。 */
+    fun setPausedUntil(medicationId: String, until: String?) = update { d ->
+        d.copy(medications = d.medications.map {
+            if (it.id == medicationId) it.copy(pausedUntil = until) else it
+        })
+    }
+
+    // ---- 临时改时间 ----
+
+    /**
+     * 把某一次服药挪到 [newTime]。同一次服药重复挪动只保留最后一次。
+     * [newTime] 传 null 表示撤销挪动、恢复原定时刻。
+     */
+    fun setDoseOverride(
+        medicationId: String,
+        date: String,
+        originalTime: TimeOfDay,
+        newTime: TimeOfDay?
+    ) = update { d ->
+        val rest = d.doseOverrides.filterNot {
+            it.medicationId == medicationId && it.date == date && it.originalTime == originalTime
+        }
+        d.copy(
+            doseOverrides = if (newTime == null) rest
+            else rest + DoseOverride(medicationId, date, originalTime, newTime)
+        )
+    }
+
+    // ---- 延后提醒 ----
+
+    /**
+     * 记下一个待触发的延后提醒。同一次服药只保留最新的一个。
+     * 从广播里调用时务必传 [syncWrite]，否则进程被回收就丢了。
+     */
+    fun putDeferredReminder(reminder: DeferredReminder, syncWrite: Boolean = false) =
+        update(sync = syncWrite) { d ->
+            val rest = d.deferredReminders.filterNot { it.key == reminder.key }
+            d.copy(deferredReminders = rest + reminder)
+        }
+
+    /** 延后提醒已触发或已被处理，移除它。 */
+    fun removeDeferredReminder(
+        medicationId: String,
+        date: String,
+        originalTime: TimeOfDay,
+        syncWrite: Boolean = false
+    ) = update(sync = syncWrite) { d ->
+        d.copy(deferredReminders = d.deferredReminders.filterNot {
+            it.medicationId == medicationId && it.date == date && it.originalTime == originalTime
+        })
+    }
 
     fun markSetupGuideShown() = update { it.copy(setupGuideShown = true) }
 

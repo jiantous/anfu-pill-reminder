@@ -6,6 +6,7 @@ import android.content.Intent
 import com.jian.pillreminder.data.DoseStatus
 import com.jian.pillreminder.data.MedRepository
 import com.jian.pillreminder.data.TimeOfDay
+import com.jian.pillreminder.domain.ScheduleEngine
 import java.time.LocalDate
 
 /**
@@ -53,6 +54,19 @@ class ReminderReceiver : BroadcastReceiver() {
 
         when (intent.action) {
             Reminders.ACTION_FIRE -> {
+                // 这次响铃可能来自延后闹钟，记录已经用掉了，清掉免得被重复重排。
+                // 同步落盘：onReceive 返回后进程可能立刻被回收。
+                repo.removeDeferredReminder(medId, date, time, syncWrite = true)
+
+                // 兜底：暂停期内不该响。正常流程里 scheduleFor 不会排暂停中的药，
+                // 但用户可能在闹钟已排好之后才点暂停，那个闹钟仍在系统里。
+                val doseDate = runCatching { LocalDate.parse(date) }.getOrNull() ?: LocalDate.now()
+                if (ScheduleEngine.isPausedOn(med, doseDate)) {
+                    android.util.Log.i("PillReceiver", "${med.name} 在暂停期内，不提醒")
+                    Reminders.scheduleFor(context, med)
+                    return
+                }
+
                 Reminders.showDoseNotification(context, med, time, date)
                 // 排下一次：闹钟是一次性的，触发后必须重排
                 Reminders.scheduleFor(context, med)
@@ -60,12 +74,17 @@ class ReminderReceiver : BroadcastReceiver() {
 
             Reminders.ACTION_TAKEN -> {
                 repo.logDose(medId, date, time, DoseStatus.TAKEN, System.currentTimeMillis(), syncWrite = true)
+                // 这次服药已经有结果了，未触发的延后闹钟和临时改时间都作废
+                repo.removeDeferredReminder(medId, date, time, syncWrite = true)
+                Reminders.cancelDeferredFor(context, medId, time)
                 Reminders.dismissDoseNotification(context, medId, time)
                 checkStock(context, medId)
             }
 
             Reminders.ACTION_SKIP -> {
                 repo.logDose(medId, date, time, DoseStatus.SKIPPED, System.currentTimeMillis(), syncWrite = true)
+                repo.removeDeferredReminder(medId, date, time, syncWrite = true)
+                Reminders.cancelDeferredFor(context, medId, time)
                 Reminders.dismissDoseNotification(context, medId, time)
             }
 

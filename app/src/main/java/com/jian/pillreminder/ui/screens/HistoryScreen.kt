@@ -203,7 +203,9 @@ private fun StatRow(
     value: String,
     tint: Color
 ) {
-    // 标签靠左、次数靠右，三行形成对齐的两列
+    // 标签靠左、次数靠右，三行形成对齐的两列。
+    // 别改成"标签和次数紧挨着"：那样每行的次数会跟着标签宽度走，
+    // 数字位数一变（9 次 → 12 次 → 100 次）右边就参差不齐。
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically

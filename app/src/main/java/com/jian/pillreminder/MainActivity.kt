@@ -13,6 +13,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,9 +26,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Medication
@@ -35,6 +39,8 @@ import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -86,6 +92,11 @@ import com.jian.pillreminder.ui.screens.ReminderHealthBanner
 import com.jian.pillreminder.ui.screens.ReminderSetupScreen
 import com.jian.pillreminder.ui.screens.ScanLeafletScreen
 import com.jian.pillreminder.ui.screens.TodayScreen
+import com.jian.pillreminder.ui.screens.AboutScreen
+import com.jian.pillreminder.ui.screens.FEEDBACK_EMAIL
+import com.jian.pillreminder.ui.screens.PROJECT_URL
+import com.jian.pillreminder.ui.screens.RELEASES_URL
+import com.jian.pillreminder.ui.screens.SettingsScreen
 import com.jian.pillreminder.ui.components.suggestIconForUnit
 import com.jian.pillreminder.ui.theme.PillReminderTheme
 
@@ -128,6 +139,11 @@ private sealed class Dest(val route: String, val label: String) {
     data object Scan : Dest("scan", "拍说明书")
     data object Setup : Dest("setup", "提醒设置")
     data object Backup : Dest("backup", "备份")
+
+    // 注意 route 不能以已有的 route 为前缀：下面 isEditing 用的是 startsWith。
+    // "settings" 不是 "setup" 的前缀，安全。
+    data object Settings : Dest("settings", "设置")
+    data object About : Dest("about", "关于")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -149,6 +165,8 @@ private fun PillApp(relaunchSignal: Int = 0) {
     // 正在编辑的药品 id（null = 新建）。放在 state 里而不是路由参数里，
     // 避免带参路由被 Navigation 恢复导致重开 App 直接落在编辑页。
     var editingId by remember { mutableStateOf<String?>(null) }
+    // 顶栏 ⋮ 菜单的展开状态
+    var menuOpen by remember { mutableStateOf(false) }
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
 
@@ -224,6 +242,23 @@ private fun PillApp(relaunchSignal: Int = 0) {
         }
     }
 
+    // ---- CSV 导出 ----
+    var settingsMessage by remember { mutableStateOf<String?>(null) }
+    // 「另存为」是异步的：点按钮时先把内容算好存这里，等用户选完位置再写
+    var pendingCsv by remember { mutableStateOf<String?>(null) }
+
+    val createCsvLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        val content = pendingCsv
+        pendingCsv = null
+        if (uri != null && content != null) {
+            val r = BackupManager.writeToFile(context, uri, content)
+            settingsMessage = if (r.isSuccess) "已导出。用 Excel 或表格类应用都能打开。"
+            else "导出失败：" + (r.exceptionOrNull()?.message ?: "未知原因")
+        }
+    }
+
     // 导入：读取用户选的备份文件，先给摘要让用户确认
     val openFileLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -285,11 +320,14 @@ private fun PillApp(relaunchSignal: Int = 0) {
         }
     }
 
-    // 编辑页与扫描页都是全屏页面，隐藏顶栏/底栏/悬浮按钮
+    // 这些是自带顶栏的全屏页面，要把外层顶栏/底栏/悬浮按钮藏掉，
+    // 否则会出现两条标题栏
     val isEditing = route?.startsWith(Dest.Edit.route) == true ||
         route?.startsWith(Dest.Scan.route) == true ||
         route?.startsWith(Dest.Setup.route) == true ||
-        route?.startsWith(Dest.Backup.route) == true
+        route?.startsWith(Dest.Backup.route) == true ||
+        route?.startsWith(Dest.Settings.route) == true ||
+        route?.startsWith(Dest.About.route) == true
 
     Scaffold(
         topBar = {
@@ -305,11 +343,40 @@ private fun PillApp(relaunchSignal: Int = 0) {
                         )
                     },
                     actions = {
-                        IconButton(onClick = { nav.navigate(Dest.Backup.route) }) {
-                            Icon(
-                                Icons.Filled.CloudUpload,
-                                contentDescription = "备份与换机"
-                            )
+                        // 一个 ⋮ 收纳全部次要入口，顶栏不再堆图标
+                        Box {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "更多")
+                            }
+                            DropdownMenu(
+                                expanded = menuOpen,
+                                onDismissRequest = { menuOpen = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("设置") },
+                                    leadingIcon = { Icon(Icons.Filled.Settings, null) },
+                                    onClick = {
+                                        menuOpen = false
+                                        nav.navigate(Dest.Settings.route)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("备份") },
+                                    leadingIcon = { Icon(Icons.Filled.CloudUpload, null) },
+                                    onClick = {
+                                        menuOpen = false
+                                        nav.navigate(Dest.Backup.route)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("关于") },
+                                    leadingIcon = { Icon(Icons.Filled.Info, null) },
+                                    onClick = {
+                                        menuOpen = false
+                                        nav.navigate(Dest.About.route)
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -594,6 +661,95 @@ private fun PillApp(relaunchSignal: Int = 0) {
                         scanResult = r
                         // 回到编辑页（它会读取 scanResult 预填表单）
                         nav.popBackStack()
+                    },
+                    onBack = { nav.popBackStack() }
+                )
+            }
+
+            composable(Dest.Settings.route) {
+                SettingsScreen(
+                    snoozeMinutes = appData.snoozeMinutes,
+                    ongoingNotification = appData.ongoingNotification,
+                    logCount = appData.logs.size,
+                    busy = backupBusy,
+                    message = settingsMessage,
+                    onSnoozeMinutesChange = { vm.setSnoozeMinutes(it) },
+                    onOngoingNotificationChange = { vm.setOngoingNotification(it) },
+                    onExportCsv = { days ->
+                        pendingCsv = vm.buildCsvContent(days)
+                        createCsvLauncher.launch(vm.suggestCsvFileName())
+                    },
+                    onShareCsv = { days ->
+                        // 和分享备份同一条路子：写到缓存目录再交给 FileProvider
+                        runCatching {
+                            val dir = java.io.File(context.cacheDir, "backup").apply { mkdirs() }
+                            val f = java.io.File(dir, vm.suggestCsvFileName())
+                            f.writeText(vm.buildCsvContent(days))
+                            val shareUri = FileProvider.getUriForFile(
+                                context, context.packageName + ".fileprovider", f
+                            )
+                            context.startActivity(
+                                Intent.createChooser(
+                                    Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/csv"
+                                        putExtra(Intent.EXTRA_STREAM, shareUri)
+                                        putExtra(Intent.EXTRA_SUBJECT, "服药记录")
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    },
+                                    "分享服药记录"
+                                )
+                            )
+                        }.onFailure {
+                            settingsMessage = "分享失败：" + (it.message ?: "未知原因")
+                        }
+                    },
+                    onOpenReminderSetup = { nav.navigate(Dest.Setup.route) },
+                    onClearMessage = { settingsMessage = null },
+                    onBack = { nav.popBackStack() }
+                )
+            }
+
+            composable(Dest.About.route) {
+                val versionName = remember {
+                    runCatching {
+                        context.packageManager
+                            .getPackageInfo(context.packageName, 0).versionName ?: ""
+                    }.getOrDefault("")
+                }
+                AboutScreen(
+                    versionName = versionName,
+                    onOpenProjectPage = {
+                        // 没有浏览器的极端情况下别崩，其它 Intent 调用也都是这个写法
+                        runCatching {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(PROJECT_URL))
+                            )
+                        }
+                    },
+                    onOpenReleases = {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES_URL))
+                            )
+                        }
+                    },
+                    onSendFeedback = {
+                        // 版本和机型预填进正文：这两样是排查提醒不响的必要信息，
+                        // 让用户自己回想手机型号往往问不出来。
+                        // ACTION_SENDTO + mailto: 只会命中邮件类应用，
+                        // 不像 ACTION_SEND 会弹出一堆能分享的 App。
+                        val body = "\n\n---\n安服 $versionName" +
+                            "\n${Build.MANUFACTURER} ${Build.MODEL}" +
+                            "\nAndroid ${Build.VERSION.RELEASE}"
+                        runCatching {
+                            context.startActivity(
+                                Intent(Intent.ACTION_SENDTO).apply {
+                                    data = Uri.parse("mailto:$FEEDBACK_EMAIL")
+                                    putExtra(Intent.EXTRA_SUBJECT, "安服反馈")
+                                    putExtra(Intent.EXTRA_TEXT, body)
+                                }
+                            )
+                        }
                     },
                     onBack = { nav.popBackStack() }
                 )

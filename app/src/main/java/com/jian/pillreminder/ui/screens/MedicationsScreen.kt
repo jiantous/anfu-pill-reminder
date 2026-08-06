@@ -3,6 +3,8 @@ package com.jian.pillreminder.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,9 +21,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PauseCircle
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
@@ -32,6 +37,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -58,9 +64,13 @@ import com.jian.pillreminder.data.Medication
 import com.jian.pillreminder.domain.ScheduleEngine
 import com.jian.pillreminder.notify.Reminders
 import com.jian.pillreminder.ui.MedViewModel
+import com.jian.pillreminder.ui.components.DatePickerDialog
 import com.jian.pillreminder.ui.components.EmptyState
 import com.jian.pillreminder.ui.components.MedBadge
 import com.jian.pillreminder.ui.theme.medColorAt
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +83,7 @@ fun MedicationsScreen(
     var pendingDelete by remember { mutableStateOf<Medication?>(null) }
     var stockEditing by remember { mutableStateOf<Medication?>(null) }
     var pendingClearSamples by remember { mutableStateOf(false) }
+    var pausing by remember { mutableStateOf<Medication?>(null) }
 
     val active = meds.filterNot { it.archived }
     val archived = meds.filter { it.archived }
@@ -111,7 +122,15 @@ fun MedicationsScreen(
                     onClick = { onOpenMedication(med.id) },
                     onArchive = { vm.toggleArchived(med) },
                     onDelete = { pendingDelete = med },
-                    onEditStock = { stockEditing = med }
+                    onEditStock = { stockEditing = med },
+                    onPause = {
+                        // 已在暂停中就直接取消，否则弹对话框选天数
+                        if (ScheduleEngine.isPausedNow(med)) {
+                            vm.setPaused(med, null)
+                        } else {
+                            pausing = med
+                        }
+                    }
                 )
             }
         }
@@ -131,7 +150,15 @@ fun MedicationsScreen(
                     onClick = { onOpenMedication(med.id) },
                     onArchive = { vm.toggleArchived(med) },
                     onDelete = { pendingDelete = med },
-                    onEditStock = { stockEditing = med }
+                    onEditStock = { stockEditing = med },
+                    onPause = {
+                        // 已在暂停中就直接取消，否则弹对话框选天数
+                        if (ScheduleEngine.isPausedNow(med)) {
+                            vm.setPaused(med, null)
+                        } else {
+                            pausing = med
+                        }
+                    }
                 )
             }
         }
@@ -169,6 +196,17 @@ fun MedicationsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { pendingClearSamples = false }) { Text("取消") }
+            }
+        )
+    }
+
+    pausing?.let { med ->
+        PauseDialog(
+            med = med,
+            onDismiss = { pausing = null },
+            onConfirm = { until ->
+                vm.setPaused(med, until)
+                pausing = null
             }
         )
     }
@@ -212,21 +250,24 @@ private fun SampleNotice(onClear: () -> Unit) {
     }
 }
 
-/** 药名后面的「示例」小标签。 */
+/** 药名后面的小标签，用于「示例」「已暂停」这类状态。 */
 @Composable
-private fun SampleTag() {
-    Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-    ) {
+private fun StatusTag(
+    text: String,
+    container: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.tertiaryContainer,
+    content: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onTertiaryContainer
+) {
+    Surface(shape = RoundedCornerShape(6.dp), color = container, contentColor = content) {
         Text(
-            "示例",
+            text,
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         )
     }
 }
+
+@Composable
+private fun SampleTag() = StatusTag("示例")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -235,10 +276,12 @@ private fun MedicationCard(
     onClick: () -> Unit,
     onArchive: () -> Unit,
     onDelete: () -> Unit,
-    onEditStock: () -> Unit
+    onEditStock: () -> Unit,
+    onPause: () -> Unit
 ) {
     val palette = medColorAt(med.colorIndex)
     var menuOpen by remember { mutableStateOf(false) }
+    val paused = ScheduleEngine.isPausedNow(med)
 
     Card(
         shape = MaterialTheme.shapes.large,
@@ -267,10 +310,23 @@ private fun MedicationCard(
                             Spacer(Modifier.width(6.dp))
                             SampleTag()
                         }
+                        if (paused) {
+                            Spacer(Modifier.width(6.dp))
+                            StatusTag("已暂停")
+                        }
                     }
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        "${Reminders.formatDosage(med.dosage)}${med.unit} · ${ScheduleEngine.describeSchedule(med)}",
+                        buildString {
+                            append(Reminders.formatDosage(med.dosage))
+                            append(med.unit)
+                            append(" · ")
+                            // 暂停中就把恢复日期说清楚，比只显示频率有用。
+                            // 说的是"恢复日期"而不是"暂停到哪天为止"：对话框里承诺的
+                            // 就是恢复日期，两处必须同一个数字，否则用户以为哪边算错了。
+                            if (paused) append("${formatResumeDate(med.pausedUntil)}恢复")
+                            else append(ScheduleEngine.describeSchedule(med))
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -284,6 +340,18 @@ private fun MedicationCard(
                             text = { Text("管理库存") },
                             leadingIcon = { Icon(Icons.Filled.Inventory2, null) },
                             onClick = { menuOpen = false; onEditStock() }
+                        )
+                        // 暂停 vs 停用的区别：暂停是临时的、有恢复日期，
+                        // 疗程和周期锚点都不动；停用是长期不吃了
+                        DropdownMenuItem(
+                            text = { Text(if (paused) "取消暂停" else "暂停几天") },
+                            leadingIcon = {
+                                Icon(
+                                    if (paused) Icons.Filled.PlayArrow else Icons.Filled.PauseCircle,
+                                    null
+                                )
+                            },
+                            onClick = { menuOpen = false; onPause() }
                         )
                         DropdownMenuItem(
                             text = { Text(if (med.archived) "恢复用药" else "停用（保留记录）") },
@@ -377,6 +445,113 @@ private fun MedicationCard(
                 )
             }
         }
+    }
+}
+
+/** 暂停常用档位。住院、出差、感冒停药，大多落在这几档里。 */
+private val PauseOptions = listOf(1 to "今天", 3 to "3 天", 7 to "1 周", 14 to "2 周", 30 to "1 个月")
+
+private val ResumeDateFormat = DateTimeFormatter.ofPattern("M 月 d 日")
+
+/**
+ * 把 pausedUntil（暂停到这天为止，含当天）转成给人看的**恢复**日期，也就是次日。
+ * 解析失败就原样返回，总比显示空白好。
+ */
+private fun formatResumeDate(pausedUntil: String?): String {
+    val until = pausedUntil ?: return "稍后"
+    val date = runCatching { LocalDate.parse(until) }.getOrNull() ?: return until
+    return date.plusDays(1).format(ResumeDateFormat)
+}
+
+/**
+ * 选暂停到哪天。
+ *
+ * 和「停用」的区别写在说明里：暂停是临时的、有明确恢复日期，
+ * 而且**不顺延疗程**——周期锚点和结束日期都不动，恢复后接着原计划走。
+ *
+ * 回调给的是「暂停到这天为止（含当天）」，和 [Medication.pausedUntil] 同义。
+ * 常用档位只是快捷入口，长按需求（住院两个月、康复期）走「选日期」。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PauseDialog(
+    med: Medication,
+    onDismiss: () -> Unit,
+    onConfirm: (LocalDate) -> Unit
+) {
+    val today = remember { LocalDate.now() }
+    // 暂停到哪天为止。默认 3 天：今天+明天+后天。
+    var until by remember { mutableStateOf(today.plusDays(2)) }
+    var pickingDate by remember { mutableStateOf(false) }
+
+    // 落在某个档位上就高亮它，从日历挑的日期通常不落档，高亮「选日期」
+    val matchedDays = ChronoUnit.DAYS.between(today, until).toInt() + 1
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("暂停「${med.name}」") },
+        text = {
+            Column {
+                Text(
+                    "暂停期间不提醒、不计入按时服药率。疗程和用药周期不会顺延，" +
+                        "恢复后接着原计划走。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(16.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PauseOptions.forEach { (d, label) ->
+                        FilterChip(
+                            selected = matchedDays == d,
+                            onClick = { until = today.plusDays((d - 1).toLong()) },
+                            label = { Text(label) }
+                        )
+                    }
+                    // 档位盖不住的情况：住院、康复期、长假
+                    FilterChip(
+                        selected = PauseOptions.none { it.first == matchedDays },
+                        onClick = { pickingDate = true },
+                        label = { Text("填日期") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.EditCalendar,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
+                }
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    "${formatResumeDate(until.toString())}恢复用药" +
+                        "（暂停 ${ChronoUnit.DAYS.between(today, until) + 1} 天）",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(until) }) { Text("暂停") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+    )
+
+    if (pickingDate) {
+        // 填的是"恢复那天"——用户想的是"哪天开始重新吃"，不是"暂停到哪天为止"。
+        // 存的时候减一天还原成 pausedUntil 的语义。
+        DatePickerDialog(
+            initialDate = until.plusDays(1),
+            title = "哪天恢复用药",
+            supportingText = "填这天开始重新吃药，前一天为止都不提醒。",
+            // 最早明天恢复，也就是至少暂停今天一天
+            minDate = today.plusDays(1),
+            onDismiss = { pickingDate = false },
+            onConfirm = { resumeDate ->
+                until = resumeDate.minusDays(1)
+                pickingDate = false
+            }
+        )
     }
 }
 
