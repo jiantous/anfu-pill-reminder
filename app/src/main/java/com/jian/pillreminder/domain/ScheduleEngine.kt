@@ -1,6 +1,7 @@
 package com.jian.pillreminder.domain
 
 import com.jian.pillreminder.data.DoseLog
+import com.jian.pillreminder.data.DoseOverride
 import com.jian.pillreminder.data.DoseStatus
 import com.jian.pillreminder.data.Medication
 import com.jian.pillreminder.data.Schedule
@@ -13,23 +14,58 @@ import java.time.ZoneId
 data class DoseItem(
     val medication: Medication,
     val date: LocalDate,
+    /**
+     * 原定时刻，**这次服药的身份**。DoseLog、通知 id、闹钟 requestCode 都由它推导，
+     * 即使用户把这次挪到了别的时间，它也不变。
+     */
     val time: TimeOfDay,
     val status: DoseStatus,
-    val actedAtMillis: Long? = null
+    val actedAtMillis: Long? = null,
+    /** 被临时挪到的时刻，null = 没挪过。只影响显示与响铃，不影响身份。 */
+    val movedTo: TimeOfDay? = null
 ) {
     val key: String get() = "${medication.id}|$date|${time.format()}"
+
+    /** 实际该提醒/显示的时刻：挪过就用新的，否则用原定的。 */
+    val effectiveTime: TimeOfDay get() = movedTo ?: time
 
     /** 该时刻是否已过（用于把未处理的过期项标成"已错过"样式）。 */
     fun isOverdue(now: LocalDateTime): Boolean =
         status == DoseStatus.PENDING &&
-            LocalDateTime.of(date, java.time.LocalTime.of(time.hour, time.minute)).isBefore(now)
+            LocalDateTime.of(
+                date,
+                java.time.LocalTime.of(effectiveTime.hour, effectiveTime.minute)
+            ).isBefore(now)
 }
 
 object ScheduleEngine {
 
-    /** 判断某药在 [date] 这天是否需要服用（只看频率与疗程，不看是否已服）。 */
+    /**
+     * [date] 是否落在暂停期内。暂停到 pausedUntil 当天为止（含当天）。
+     *
+     * 日期解析失败时按"没暂停"处理：宁可多提醒一次，也不能因为一个坏字段
+     * 让人整段时间收不到吃药提醒。
+     */
+    fun isPausedOn(med: Medication, date: LocalDate): Boolean {
+        val until = med.pausedUntil ?: return false
+        val end = runCatching { LocalDate.parse(until) }.getOrNull() ?: return false
+        return !date.isAfter(end)
+    }
+
+    /** 相对今天是否处于暂停中，用于卡片上显示「已暂停」。 */
+    fun isPausedNow(med: Medication, today: LocalDate = LocalDate.now()): Boolean =
+        isPausedOn(med, today)
+
+    /**
+     * 判断某药在 [date] 这天是否需要服用（只看频率与疗程，不看是否已服）。
+     *
+     * 这里是"这次服药算不算数"的唯一闸口——[dosesForDate] 和 [nextOccurrence] 都走它，
+     * 所以暂停判断放在这里，一处生效四件事：不排闹钟、不上今日清单、
+     * 不计入依从率、日历不上色。
+     */
     fun isDueOn(med: Medication, date: LocalDate): Boolean {
         if (med.archived) return false
+        if (isPausedOn(med, date)) return false
 
         val start = runCatching { LocalDate.parse(med.startDate) }.getOrNull() ?: return false
         if (date.isBefore(start)) return false
@@ -56,30 +92,41 @@ object ScheduleEngine {
         }
     }
 
-    /** 生成某一天的完整服药清单（含已服/已跳过状态），按时间排序。 */
+    /**
+     * 生成某一天的完整服药清单（含已服/已跳过状态），按时间排序。
+     *
+     * [overrides] 里的临时改时间只改变显示与排序用的时刻，不改变身份：
+     * 状态查询依旧按原定时刻去 logs 里找。
+     */
     fun dosesForDate(
         meds: List<Medication>,
         logs: List<DoseLog>,
-        date: LocalDate
+        date: LocalDate,
+        overrides: List<DoseOverride> = emptyList()
     ): List<DoseItem> {
         val dateStr = date.toString()
         val logIndex = logs.filter { it.date == dateStr }.associateBy { "${it.medicationId}|${it.time.format()}" }
+        val overrideIndex = overrides.filter { it.date == dateStr }
+            .associateBy { "${it.medicationId}|${it.originalTime.format()}" }
 
         return meds
             .filter { isDueOn(it, date) }
             .flatMap { med ->
                 med.times.map { t ->
-                    val log = logIndex["${med.id}|${t.format()}"]
+                    val idKey = "${med.id}|${t.format()}"
+                    val log = logIndex[idKey]
                     DoseItem(
                         medication = med,
                         date = date,
                         time = t,
                         status = log?.status ?: DoseStatus.PENDING,
-                        actedAtMillis = log?.actedAtMillis
+                        actedAtMillis = log?.actedAtMillis,
+                        movedTo = overrideIndex[idKey]?.newTime
                     )
                 }
             }
-            .sortedWith(compareBy({ it.time.minutesOfDay }, { it.medication.name }))
+            // 按实际提醒时刻排序，挪走的那条才会出现在清单里它该在的位置
+            .sortedWith(compareBy({ it.effectiveTime.minutesOfDay }, { it.medication.name }))
     }
 
     /**
@@ -128,13 +175,18 @@ object ScheduleEngine {
         val rate: Float? get() = if (totalDue == 0) null else taken.toFloat() / totalDue
     }
 
-    /** 统计 [start]..[end] 区间（含端点）的依从情况。 */
+    /**
+     * 统计 [start]..[end] 区间（含端点）的依从情况。
+     *
+     * [overrides] 会影响"错过还是待服用"的判定：挪到晚上的那次，中午还不算错过。
+     */
     fun adherence(
         meds: List<Medication>,
         logs: List<DoseLog>,
         start: LocalDate,
         end: LocalDate,
-        now: LocalDateTime
+        now: LocalDateTime,
+        overrides: List<DoseOverride> = emptyList()
     ): Adherence {
         var taken = 0
         var skipped = 0
@@ -142,7 +194,7 @@ object ScheduleEngine {
         var upcoming = 0
         var d = start
         while (!d.isAfter(end)) {
-            for (item in dosesForDate(meds, logs, d)) {
+            for (item in dosesForDate(meds, logs, d, overrides)) {
                 when (item.status) {
                     DoseStatus.TAKEN -> taken++
                     DoseStatus.SKIPPED -> skipped++

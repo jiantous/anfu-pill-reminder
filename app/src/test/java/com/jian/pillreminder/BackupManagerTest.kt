@@ -3,7 +3,9 @@ package com.jian.pillreminder
 import com.jian.pillreminder.data.AppData
 import com.jian.pillreminder.data.BackupFile
 import com.jian.pillreminder.data.BackupManager
+import com.jian.pillreminder.data.DeferredReminder
 import com.jian.pillreminder.data.DoseLog
+import com.jian.pillreminder.data.DoseOverride
 import com.jian.pillreminder.data.DoseStatus
 import com.jian.pillreminder.data.ImportMode
 import com.jian.pillreminder.data.Medication
@@ -67,6 +69,52 @@ class BackupManagerTest {
         assertEquals(1, result.logs.size)
     }
 
+    @Test
+    fun `常驻通知开关跟着备份走`() {
+        val data = AppData(
+            medications = listOf(med("a", "维生素 D")),
+            ongoingNotification = false
+        )
+        val text = BackupManager.buildBackup(data, appVersion = "1.0")
+        assertTrue("关掉的状态要写进备份", text.contains("\"ongoingNotification\": false"))
+
+        val restored = BackupFile(exportedAt = "2026-08-03T10:00:00", ongoingNotification = false)
+        val applied = BackupManager.apply(AppData(), restored, ImportMode.REPLACE)
+        assertEquals(false, applied.ongoingNotification)
+    }
+
+    @Test
+    fun `旧备份没有常驻通知字段时按默认开启读入`() {
+        // 换手机的典型情形：旧版导出、新版导入。缺字段不能让整个备份读失败。
+        val old = """
+            {"version":2,"exportedAt":"2026-08-03T10:00:00","medications":[],"logs":[]}
+        """.trimIndent()
+        val parsed = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+            .decodeFromString<BackupFile>(old)
+        assertEquals(true, parsed.ongoingNotification)
+    }
+
+    @Test
+    fun `完全覆盖会清掉临时改的时间和稍后提醒`() {
+        // 药品被整批换掉，这两样都指向已经不存在的药，留着就是孤儿。
+        val current = AppData(
+            medications = listOf(med("x", "本机的药")),
+            doseOverrides = listOf(
+                DoseOverride("x", "2026-08-06", TimeOfDay(8, 0), TimeOfDay(11, 30))
+            ),
+            deferredReminders = listOf(
+                DeferredReminder("x", "2026-08-06", TimeOfDay(8, 0), Long.MAX_VALUE)
+            )
+        )
+        val backup = BackupFile(
+            exportedAt = "2026-08-03T10:00:00",
+            medications = listOf(med("a", "备份里的药"))
+        )
+        val result = BackupManager.apply(current, backup, ImportMode.REPLACE)
+        assertTrue("临时改的时间该清空", result.doseOverrides.isEmpty())
+        assertTrue("稍后提醒该清空", result.deferredReminders.isEmpty())
+    }
+
     // ---- MERGE ----
 
     @Test
@@ -80,6 +128,28 @@ class BackupManagerTest {
         assertEquals(2, result.medications.size)
         assertTrue(result.medications.any { it.name == "新药" })
         assertTrue(result.medications.any { it.name == "旧药" })
+    }
+
+    @Test
+    fun `合并保留本机的临时改时间和稍后提醒`() {
+        // MERGE 不删药，本机这两样状态仍然对应着真实存在的药和已排好的闹钟。
+        val current = AppData(
+            medications = listOf(med("x", "本机的药")),
+            doseOverrides = listOf(
+                DoseOverride("x", "2026-08-06", TimeOfDay(8, 0), TimeOfDay(11, 30))
+            ),
+            deferredReminders = listOf(
+                DeferredReminder("x", "2026-08-06", TimeOfDay(8, 0), Long.MAX_VALUE)
+            )
+        )
+        val backup = BackupFile(
+            exportedAt = "2026-08-03T10:00:00",
+            medications = listOf(med("a", "备份里的药"))
+        )
+        val result = BackupManager.apply(current, backup, ImportMode.MERGE)
+        assertEquals(1, result.doseOverrides.size)
+        assertEquals(TimeOfDay(11, 30), result.doseOverrides.first().newTime)
+        assertEquals(1, result.deferredReminders.size)
     }
 
     @Test

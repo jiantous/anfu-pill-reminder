@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
@@ -49,10 +50,8 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +68,8 @@ import com.jian.pillreminder.data.Schedule
 import com.jian.pillreminder.data.TimeOfDay
 import com.jian.pillreminder.domain.ScheduleEngine
 import com.jian.pillreminder.ui.components.MedBadge
+import com.jian.pillreminder.ui.components.DatePickerDialog
+import com.jian.pillreminder.ui.components.TimePickerDialog
 import com.jian.pillreminder.ui.components.MedIcons
 import com.jian.pillreminder.ui.components.suggestIconForUnit
 import com.jian.pillreminder.ui.theme.MedColors
@@ -139,6 +140,8 @@ fun EditMedicationScreen(
         mutableStateOf(initial.endDate ?: LocalDate.now().plusMonths(1).toString())
     }
     var startDateText by remember { mutableStateOf(initial.startDate) }
+    /** 正在填哪个日期，null = 没在填。 */
+    var editingDate by remember { mutableStateOf<DateField?>(null) }
 
     fun buildSchedule(): Schedule = when (freqTab) {
         FreqTab.DAILY -> Schedule.Daily
@@ -479,16 +482,15 @@ fun EditMedicationScreen(
 
             // ---- 疗程 ----
             SettingCard("疗程") {
-                OutlinedTextField(
-                    value = startDateText,
-                    onValueChange = { startDateText = it },
-                    label = { Text("开始日期") },
-                    placeholder = { Text("yyyy-MM-dd") },
-                    supportingText = { Text("间隔/周期用药从这天开始算") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                // 原来是两个要手打 yyyy-MM-dd 的文本框，格式打错了不好发现。
+                // 现在点开填年月日，和暂停用药那边共用同一个对话框。
+                DateRow(
+                    label = "开始日期",
+                    dateText = startDateText,
+                    hint = "间隔/周期用药从这天开始算",
+                    onClick = { editingDate = DateField.START }
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(4.dp))
                 ListItem(
                     headlineContent = { Text("设定结束日期") },
                     supportingContent = {
@@ -502,13 +504,11 @@ fun EditMedicationScreen(
                     )
                 )
                 if (hasEndDate) {
-                    OutlinedTextField(
-                        value = endDateText,
-                        onValueChange = { endDateText = it },
-                        label = { Text("结束日期") },
-                        placeholder = { Text("yyyy-MM-dd") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                    DateRow(
+                        label = "结束日期",
+                        dateText = endDateText,
+                        hint = null,
+                        onClick = { editingDate = DateField.END }
                     )
                 }
             }
@@ -656,6 +656,33 @@ fun EditMedicationScreen(
         )
     }
 
+    editingDate?.let { field ->
+        val current = when (field) {
+            DateField.START -> startDateText
+            DateField.END -> endDateText
+        }
+        DatePickerDialog(
+            initialDate = runCatching { LocalDate.parse(current) }
+                .getOrDefault(LocalDate.now()),
+            title = if (field == DateField.START) "填写开始日期" else "填写结束日期",
+            supportingText = if (field == DateField.START)
+                "间隔用药、周期用药都从这天开始算。"
+            else "这天之后就不再提醒了。",
+            // 结束不能早于开始，否则这药一天都不用吃，等于静默失效
+            minDate = if (field == DateField.END)
+                runCatching { LocalDate.parse(startDateText) }.getOrNull()
+            else null,
+            onDismiss = { editingDate = null },
+            onConfirm = { picked ->
+                when (field) {
+                    DateField.START -> startDateText = picked.toString()
+                    DateField.END -> endDateText = picked.toString()
+                }
+                editingDate = null
+            }
+        )
+    }
+
     if (showDeleteConfirm && onDelete != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -671,6 +698,51 @@ fun EditMedicationScreen(
             }
         )
     }
+}
+
+/** 疗程里的两个日期，用来标识正在填哪一个。 */
+private enum class DateField { START, END }
+
+/**
+ * 一行可点的日期。点了弹填写对话框。
+ *
+ * 显示成「2026 年 9 月 6 日」而不是存储用的 2026-09-06——后者是给机器看的。
+ */
+@Composable
+private fun DateRow(
+    label: String,
+    dateText: String,
+    hint: String?,
+    onClick: () -> Unit
+) {
+    val pretty = remember(dateText) {
+        runCatching {
+            LocalDate.parse(dateText)
+                .format(DateTimeFormatter.ofPattern("yyyy 年 M 月 d 日"))
+        }.getOrDefault(dateText)
+    }
+    ListItem(
+        headlineContent = { Text(label) },
+        supportingContent = {
+            Column {
+                Text(pretty, style = MaterialTheme.typography.bodyLarge)
+                if (hint != null) {
+                    Text(
+                        hint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        trailingContent = {
+            Icon(Icons.Filled.EditCalendar, contentDescription = "修改$label")
+        },
+        colors = androidx.compose.material3.ListItemDefaults.colors(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent
+        ),
+        modifier = Modifier.clickable(onClick = onClick)
+    )
 }
 
 @Composable
@@ -696,30 +768,3 @@ private fun SettingCard(
     Spacer(Modifier.height(20.dp))
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimePickerDialog(
-    initialHour: Int,
-    initialMinute: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (Int, Int) -> Unit
-) {
-    val state = rememberTimePickerState(
-        initialHour = initialHour,
-        initialMinute = initialMinute,
-        is24Hour = true
-    )
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("选择服药时间") },
-        text = {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                TimePicker(state = state)
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(state.hour, state.minute) }) { Text("确定") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
-    )
-}
