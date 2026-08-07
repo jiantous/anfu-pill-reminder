@@ -29,3 +29,6 @@ __pycache__/
 # 准备上传到 Release 的产物。APK 不进仓库——几十 MB 的二进制会让
 # clone 变慢，且每次构建都不同，Release 附件才是它该待的地方。
 release-v*/
+
+# adb 截图 / uiautomator dump，纯调试用，跟改动无关
+_shots/

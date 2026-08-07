@@ -128,7 +128,13 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
             status = status,
             nowMillis = System.currentTimeMillis()
         )
-        Reminders.dismissDoseNotification(getApplication(), item.medication.id, item.time)
+        // 这次服药已经有结果了，未触发的延后闹钟（稍后提醒/临时改时间）都作废。
+        // 用 clearDoseOutcome 而不是在这里各写一遍：之前就是因为这段清理在
+        // ReminderReceiver 和这里各写一份，这份漏了撤延后闹钟，才出现
+        // "先点稍后提醒、再在 App 里打卡，闹钟到点照样响"的 bug。
+        Reminders.clearDoseOutcome(
+            getApplication(), item.medication.id, item.date.toString(), item.time
+        )
 
         if (status == DoseStatus.TAKEN) {
             val updated = repo.data.value.medications.firstOrNull { it.id == item.medication.id }

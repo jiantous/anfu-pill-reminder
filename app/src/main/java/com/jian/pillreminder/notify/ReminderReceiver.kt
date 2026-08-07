@@ -74,18 +74,13 @@ class ReminderReceiver : BroadcastReceiver() {
 
             Reminders.ACTION_TAKEN -> {
                 repo.logDose(medId, date, time, DoseStatus.TAKEN, System.currentTimeMillis(), syncWrite = true)
-                // 这次服药已经有结果了，未触发的延后闹钟和临时改时间都作废
-                repo.removeDeferredReminder(medId, date, time, syncWrite = true)
-                Reminders.cancelDeferredFor(context, medId, time)
-                Reminders.dismissDoseNotification(context, medId, time)
+                Reminders.clearDoseOutcome(context, medId, date, time)
                 checkStock(context, medId)
             }
 
             Reminders.ACTION_SKIP -> {
                 repo.logDose(medId, date, time, DoseStatus.SKIPPED, System.currentTimeMillis(), syncWrite = true)
-                repo.removeDeferredReminder(medId, date, time, syncWrite = true)
-                Reminders.cancelDeferredFor(context, medId, time)
-                Reminders.dismissDoseNotification(context, medId, time)
+                Reminders.clearDoseOutcome(context, medId, date, time)
             }
 
             Reminders.ACTION_SNOOZE -> {

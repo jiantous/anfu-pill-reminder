@@ -352,6 +352,21 @@ object Reminders {
     fun cancelDeferredFor(context: Context, medId: String, time: TimeOfDay) =
         cancelDeferred(context, medId, time)
 
+    /**
+     * 某次服药已经有结果（已服用/跳过）——收尾清理，三处调用点都要做全同一件事：
+     * 台账里的延后记录、系统里排着的延后闹钟、通知栏上那条通知，一个都不能漏。
+     *
+     * 这原本在 ReminderReceiver 的 ACTION_TAKEN/ACTION_SKIP 和 MedViewModel.mark()
+     * 里各写一遍，结果 MedViewModel 那份漏了撤延后闹钟——"稍后提醒排了 15 分钟后的
+     * 闹钟，App 里点了已服用，15 分钟后还是响了"。收成一个函数，以后不会再有
+     * 某条路径漏写一行的问题。
+     */
+    fun clearDoseOutcome(context: Context, medId: String, date: String, time: TimeOfDay) {
+        MedRepository.get(context).removeDeferredReminder(medId, date, time, syncWrite = true)
+        cancelDeferredFor(context, medId, time)
+        dismissDoseNotification(context, medId, time)
+    }
+
     private fun cancelDeferred(context: Context, medId: String, time: TimeOfDay) {
         val am = context.getSystemService(AlarmManager::class.java) ?: return
         val pi = PendingIntent.getBroadcast(
