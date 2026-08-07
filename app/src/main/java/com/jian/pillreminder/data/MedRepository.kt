@@ -8,8 +8,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.LocalDate
@@ -26,20 +24,69 @@ class MedRepository private constructor(private val file: File) {
         encodeDefaults = true
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val writeLock = Mutex()
+
+    /**
+     * 写盘用的锁。**同步和异步写必须争同一把锁**，否则等于没有互斥。
+     * 用 Java 的对象锁而不是协程 Mutex：同步写来自 BroadcastReceiver，
+     * 不在协程里，没法 withLock。
+     */
+    private val fileLock = Any()
+
+    /**
+     * 读盘失败时置为 true，此后一切写操作都被拒绝。
+     *
+     * 用意是"宁可不保存，也不能覆盖"：磁盘上那份文件也许还能人工救回来，
+     * 一旦被空数据盖掉就彻底没了。
+     */
+    @Volatile
+    private var loadFailed = false
 
     private val _data = MutableStateFlow(AppData())
     val data: StateFlow<AppData> = _data.asStateFlow()
 
-    private fun loadBlocking(): AppData =
+    /** 数据是否处于只读保护模式（读盘失败）。UI 可以据此提示用户。 */
+    val isReadOnly: Boolean get() = loadFailed
+
+    /**
+     * 读盘。**解析失败绝不能当成"全新安装"**——那会让后续任何一次写操作
+     * 把空数据覆盖上去，用户的用药历史就永久没了。
+     *
+     * 所以这里分三种情况：
+     *  1. 文件不存在 → 真的是全新安装，返回空数据，允许写盘。
+     *  2. 文件存在且能解析 → 正常路径。
+     *  3. 文件存在但解析失败 → **把原文件另存为 .corrupt 备份**，并进入
+     *     只读保护模式（[loadFailed] = true），后续写操作全部拒绝，
+     *     避免把坏数据的残骸也覆盖掉。用户至少还能从 .corrupt 里救回来。
+     */
+    private fun loadBlocking(): AppData {
+        if (!file.exists() || file.length() == 0L) {
+            // 全新安装：直接标成当前版本，不需要迁移
+            return AppData(schemaVersion = CURRENT_SCHEMA)
+        }
+        return runCatching {
+            pruneStale(migrate(json.decodeFromString<AppData>(file.readText())))
+        }.getOrElse { err ->
+            android.util.Log.e("PillRepo", "数据文件解析失败，进入只读保护模式", err)
+            quarantineCorruptFile()
+            loadFailed = true
+            AppData(schemaVersion = CURRENT_SCHEMA)
+        }
+    }
+
+    /**
+     * 数据文件读不出来时，先留一份现场。
+     *
+     * 命名带时间戳，避免反复启动把上一份证据也盖掉——第一次失败那份才是
+     * 最接近原始数据的。
+     */
+    private fun quarantineCorruptFile() {
         runCatching {
-            if (file.exists() && file.length() > 0) {
-                pruneStale(migrate(json.decodeFromString<AppData>(file.readText())))
-            } else {
-                // 全新安装：直接标成当前版本，不需要迁移
-                AppData(schemaVersion = CURRENT_SCHEMA)
-            }
-        }.getOrElse { AppData(schemaVersion = CURRENT_SCHEMA) }
+            val stamp = System.currentTimeMillis()
+            val backup = File(file.parentFile, "${file.name}.corrupt.$stamp")
+            file.copyTo(backup, overwrite = false)
+            android.util.Log.w("PillRepo", "已保留损坏文件副本: ${backup.name}")
+        }.onFailure { android.util.Log.e("PillRepo", "保留损坏文件副本失败", it) }
+    }
 
     /**
      * 清掉过期的临时状态。每次启动都跑（不像 migrate 只跑一次）。
@@ -90,24 +137,52 @@ class MedRepository private constructor(private val file: File) {
         return migrated
     }
 
+    /**
+     * 落盘。写临时文件 → fsync → 原子改名。
+     *
+     * **不能先 delete 再 rename**：那样中间有个窗口两个文件都不在正确位置，
+     * 而且 renameTo 失败时原文件已经没了。同名 rename 在同一文件系统上本身
+     * 就是原子替换，直接覆盖即可。
+     *
+     * 每一步都检查结果——静默失败会让用户以为数据存住了。
+     */
     private fun writeToDisk(snapshot: AppData) {
         runCatching {
             file.parentFile?.mkdirs()
-            // 先写临时文件再改名，避免写一半崩溃导致数据损坏
             val tmp = File(file.parentFile, "${file.name}.tmp")
-            tmp.writeText(json.encodeToString(snapshot))
-            if (file.exists()) file.delete()
-            tmp.renameTo(file)
+
+            // 写完必须 fsync：只 writeText 的话数据可能还在页缓存里，
+            // 此时断电/强杀会得到一个长度正常但内容截断的文件。
+            java.io.FileOutputStream(tmp).use { out ->
+                out.write(json.encodeToString(snapshot).toByteArray())
+                out.flush()
+                out.fd.sync()
+            }
+
+            // 原子替换。Files.move 带 ATOMIC_MOVE 语义比 File.renameTo 明确，
+            // 失败会抛异常而不是返回 false 被忽略。
+            java.nio.file.Files.move(
+                tmp.toPath(),
+                file.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE
+            )
         }.onFailure { android.util.Log.e("PillRepo", "写入数据失败", it) }
     }
 
     private fun persist(snapshot: AppData, sync: Boolean) {
+        // 读盘失败过就绝不写盘：磁盘上那份可能还能救，覆盖了就真没了
+        if (loadFailed) {
+            android.util.Log.w("PillRepo", "只读保护模式，拒绝写盘")
+            return
+        }
         if (sync) {
             // BroadcastReceiver 场景：onReceive 返回后进程可能立刻被回收，
             // 异步写会丢数据，必须在返回前落盘。
-            synchronized(this) { writeToDisk(snapshot) }
+            synchronized(fileLock) { writeToDisk(snapshot) }
         } else {
-            scope.launch { writeLock.withLock { writeToDisk(snapshot) } }
+            // 和同步写争同一把锁，避免两条路径同时改同一个文件
+            scope.launch { synchronized(fileLock) { writeToDisk(snapshot) } }
         }
     }
 
