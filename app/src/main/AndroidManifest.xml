@@ -15,10 +15,19 @@
         android:name="android.hardware.camera.any"
         android:required="false" />
 
+    <!--
+        allowBackup 刻意关掉。开着会有两个问题：
+
+        1. 数据丢失。系统会在装 App 时自动把云端备份恢复到本地，
+           一份陈旧的备份可以直接覆盖掉当前数据——用户什么都没做，
+           用药记录就没了。已经真实发生过一次。
+        2. 与隐私承诺矛盾。安服对外说"不联网、数据只在这台手机上"，
+           而自动备份会把用药数据传到 Google 云端，用户并不知情。
+
+        备份完全交给「备份」页手动导出 JSON，存哪里由用户自己决定。
+    -->
     <application
-        android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
