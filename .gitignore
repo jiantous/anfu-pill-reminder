@@ -17,18 +17,25 @@ keystore.properties
 # 从手机拉下来的用药数据备份，属于个人健康信息
 _backups/
 
-# 设计工具生成的预览图（重新跑脚本即可再生成）
-design/*_compare.png
-design/med_icons_preview.png
-design/med_icons_small.png
+# ---- 以下都是开发过程产物，跟使用 App 无关，不进仓库 ----
+#
+# 仓库只放 App 本身和用户用得上的东西：源码、README、使用说明。
+# 设计脚本、社交配图、调试截图对使用者没有价值，只会让 clone 变大。
+
+# 设计脚本与其产物：图标预览、社交媒体配图
+design/
+
+# adb 截图 / uiautomator dump，纯调试用
+_shots/
+
+# 待上传到 Release 的 APK。几十 MB 的二进制不该进 git，
+# 每次构建都不同，Release 附件才是它该待的地方。
+_release/
+release-v*/
+
+# 给 AI 助手看的项目约定，不是 App 的一部分
+CLAUDE.md
 
 # Python 缓存
 __pycache__/
 *.pyc
-
-# 准备上传到 Release 的产物。APK 不进仓库——几十 MB 的二进制会让
-# clone 变慢，且每次构建都不同，Release 附件才是它该待的地方。
-release-v*/
-
-# adb 截图 / uiautomator dump，纯调试用，跟改动无关
-_shots/
