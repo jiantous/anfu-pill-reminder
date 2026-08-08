@@ -25,7 +25,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -158,7 +157,7 @@ fun AboutScreen(
                     Spacer(Modifier.height(24.dp))
                     Text("提建议 / 报问题", style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(12.dp))
-                    OutlinedButton(
+                    FilledTonalButton(
                         onClick = onSendFeedback,
                         modifier = Modifier.fillMaxWidth().height(50.dp)
                     ) {
@@ -184,7 +183,7 @@ fun AboutScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(12.dp))
-                    OutlinedButton(
+                    FilledTonalButton(
                         onClick = onOpenProjectPage,
                         modifier = Modifier.fillMaxWidth().height(50.dp)
                     ) {

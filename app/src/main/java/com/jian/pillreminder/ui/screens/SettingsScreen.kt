@@ -22,11 +22,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -121,7 +122,8 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                OutlinedButton(
+                // 填色按钮 vs 线框 - 同 FilledTonalButton 效果
+                Button(
                     onClick = onOpenReminderSetup,
                     modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) { Text("检查提醒功能是否正常") }
@@ -130,6 +132,12 @@ fun SettingsScreen(
             // ---- 数据 ----
             SettingsSection("数据") {
                 Spacer(Modifier.height(4.dp))
+                Text(
+                    "服药记录导出为 CSV 表格，可用 Excel 打开，适合复诊时给医生看。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -144,7 +152,7 @@ fun SettingsScreen(
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(
+                    FilledTonalButton(
                         onClick = { onExportCsv(selectedRange) },
                         enabled = !busy,
                         modifier = Modifier.weight(1f)
@@ -153,7 +161,7 @@ fun SettingsScreen(
                         Spacer(Modifier.width(6.dp))
                         Text("另存为")
                     }
-                    OutlinedButton(
+                    FilledTonalButton(
                         onClick = { onShareCsv(selectedRange) },
                         enabled = !busy,
                         modifier = Modifier.weight(1f)

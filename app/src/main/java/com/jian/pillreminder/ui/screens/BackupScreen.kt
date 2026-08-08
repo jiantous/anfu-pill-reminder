@@ -1,7 +1,6 @@
 package com.jian.pillreminder.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,14 +11,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -29,9 +25,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -39,7 +33,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jian.pillreminder.data.BackupSummary
 import com.jian.pillreminder.data.ImportMode
@@ -49,21 +42,23 @@ import com.jian.pillreminder.data.ImportMode
  *
  * 设计取向：不做云账号，把备份文件交给用户自己掌控（存云盘同步目录 / 发给自己）。
  * 好处是不依赖任何服务器、健康数据不经第三方，代价是需要用户主动导出一次。
+ *
+ * 只有两个按钮：备份、恢复。
+ * 曾经把"选文件夹"和"备份到这个文件夹"拆成两步——先配置一次文件夹，之后才能备份。
+ * 那等于要求用户先理解"这个 App 记住了一个文件夹"才会用，而且换位置还得再找一个
+ * 小按钮。现在点一次「备份到本地」就走完：弹系统选择器 → 选位置 → 立即写入。
+ * 想换地方，下次点同一个按钮时在选择器里换个目录就行，系统本身会记住上次去过哪。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BackupScreen(
     lastBackupDate: String?,
     daysSinceBackup: Long?,
-    folderName: String?,
     medicationCount: Int,
     logCount: Int,
     busy: Boolean,
     message: String?,
-    onPickFolder: () -> Unit,
-    onExportToFolder: () -> Unit,
-    onExportToFile: () -> Unit,
-    onShare: () -> Unit,
+    onBackup: () -> Unit,
     onImport: () -> Unit,
     onClearMessage: () -> Unit,
     onBack: () -> Unit
@@ -117,14 +112,13 @@ fun BackupScreen(
                         },
                         highlight = lastBackupDate == null || (daysSinceBackup ?: 0) > 30
                     )
-                    InfoRow("备份文件夹", folderName ?: "未设置")
                 }
             }
 
             Spacer(Modifier.height(20.dp))
 
-            // ---- 导出 ----
-            SectionTitle("导出备份")
+            // 合并到一个卡片，不分"导出"和"导入"两个标题。
+            // 备份和恢复是一件事的正反两面。
             Card(
                 shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(
@@ -132,79 +126,25 @@ fun BackupScreen(
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    if (folderName == null) {
-                        Spacer(Modifier.height(4.dp))
-                        Button(
-                            onClick = onPickFolder,
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
-                        ) {
-                            Icon(Icons.Filled.Folder, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("选择备份文件夹")
-                        }
-                    } else {
-                        Spacer(Modifier.height(4.dp))
-                        Button(
-                            onClick = onExportToFolder,
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
-                        ) {
-                            Icon(Icons.Filled.CloudUpload, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("备份到这个文件夹")
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        TextButton(onClick = onPickFolder, enabled = !busy) {
-                            Text("换一个文件夹")
-                        }
-                    }
-
-                    Spacer(Modifier.height(20.dp))
+                Column(Modifier.fillMaxWidth().padding(20.dp)) {
                     Text(
-                        "其它导出方式",
-                        style = MaterialTheme.typography.labelLarge,
+                        "备份 JSON 格式文件存档，导入可恢复。",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(Modifier.height(16.dp))
+
+                    Button(
+                        onClick = onBackup,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                    ) {
+                        Icon(Icons.Filled.CloudUpload, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("备份到本地")
+                    }
+
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(
-                            onClick = onExportToFile,
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f)
-                        ) { Text("另存为…") }
-                        OutlinedButton(
-                            onClick = onShare,
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Filled.Share, null, Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("分享")
-                        }
-                    }
-                    }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // ---- 导入 ----
-            SectionTitle("从备份恢复")
-            Card(
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text(
-                        "选中备份文件即可恢复，导入前会告诉你备份里有什么，可覆盖也可合并。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(14.dp))
                     FilledTonalButton(
                         onClick = onImport,
                         enabled = !busy,
@@ -230,16 +170,6 @@ fun BackupScreen(
             confirmButton = { TextButton(onClick = onClearMessage) { Text("好") } }
         )
     }
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-    )
 }
 
 @Composable
