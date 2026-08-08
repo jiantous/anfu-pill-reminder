@@ -22,7 +22,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -134,21 +133,15 @@ fun AboutScreen(
                     Text("隐私", style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "安服没有申请网络权限——不是「承诺不上传」，是技术上做不到。" +
-                            "没有服务器，也不用注册账号。拍说明书用的是手机本地识别引擎，" +
-                            "照片识别完立刻丢弃。所有数据只存在这台手机上。\n\n" +
-                            "下面的按钮是把网址或邮件交给浏览器、邮件 App 去处理，" +
-                            "不会带上你的用药数据。",
+                        "没有网络权限，数据只存在这台手机上。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    HorizontalDivider(Modifier.padding(vertical = 14.dp))
-                    Text("检查新版本", style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(24.dp))
+                    Text("更新", style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(6.dp))
-                    // 说清楚为什么要手动：不联网是刻意的取舍，不是偷懒
                     Text(
-                        "安服不联网，没法自动提示更新。新版本都发在 GitHub 的 " +
-                            "Releases 页，想看有没有更新就点下面。",
+                        "新版本发布在 GitHub Releases 页。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -159,18 +152,11 @@ fun AboutScreen(
                     ) {
                         Icon(Icons.Filled.Update, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("看看有没有新版本")
+                        Text("检查更新")
                     }
 
-                    HorizontalDivider(Modifier.padding(vertical = 14.dp))
+                    Spacer(Modifier.height(24.dp))
                     Text("提建议 / 报问题", style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "用得不顺手、想要什么功能，或者提醒没响，都欢迎告诉我。" +
-                            "描述一下当时的情况和手机型号会更好排查。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                     Spacer(Modifier.height(12.dp))
                     OutlinedButton(
                         onClick = onSendFeedback,
@@ -189,7 +175,7 @@ fun AboutScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    HorizontalDivider(Modifier.padding(vertical = 14.dp))
+                    Spacer(Modifier.height(24.dp))
                     Text("开源", style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(6.dp))
                     Text(

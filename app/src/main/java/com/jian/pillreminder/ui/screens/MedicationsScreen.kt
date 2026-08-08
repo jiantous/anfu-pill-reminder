@@ -92,7 +92,7 @@ fun MedicationsScreen(
         EmptyState(
             icon = Icons.Filled.Medication,
             title = "药箱是空的",
-            subtitle = "点右下角的 + 添加药品，设置好剂量、时间和用药周期",
+            subtitle = "",
             modifier = Modifier.fillMaxSize().padding(top = 80.dp)
         )
         return
@@ -493,8 +493,7 @@ private fun PauseDialog(
         text = {
             Column {
                 Text(
-                    "暂停期间不提醒、不计入按时服药率。疗程和用药周期不会顺延，" +
-                        "恢复后接着原计划走。",
+                    "暂停期间不提醒、不统计，恢复后接着原计划走。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

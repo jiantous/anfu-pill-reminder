@@ -72,7 +72,7 @@ fun HistoryScreen(vm: MedViewModel) {
         EmptyState(
             icon = Icons.Filled.Insights,
             title = "还没有服药记录",
-            subtitle = "添加药品并开始打卡后，这里会显示你的按时服药率和日历",
+            subtitle = "",
             modifier = Modifier.fillMaxSize().padding(top = 80.dp)
         )
         return
