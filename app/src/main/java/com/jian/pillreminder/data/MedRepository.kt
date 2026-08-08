@@ -330,8 +330,6 @@ class MedRepository private constructor(private val file: File) {
 
     // ---- 备份 ----
 
-    fun setBackupFolder(uri: String?) = update { it.copy(backupFolderUri = uri) }
-
     fun markBackedUp(date: String) = update { it.copy(lastBackupDate = date) }
 
     fun setBackupReminderDismissed(dismissed: Boolean) =
