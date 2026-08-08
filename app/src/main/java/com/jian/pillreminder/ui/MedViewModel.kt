@@ -244,8 +244,6 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
         return BackupManager.buildBackup(repo.data.value, version)
     }
 
-    fun setBackupFolder(uri: String?) = repo.setBackupFolder(uri)
-
     fun markBackedUp() = repo.markBackedUp(LocalDate.now().toString())
 
     fun dismissBackupReminder() = repo.setBackupReminderDismissed(true)

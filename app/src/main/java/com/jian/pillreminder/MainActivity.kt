@@ -81,7 +81,6 @@ import com.jian.pillreminder.data.BackupFile
 import com.jian.pillreminder.data.BackupManager
 import com.jian.pillreminder.data.BackupSummary
 import androidx.core.content.FileProvider
-import androidx.documentfile.provider.DocumentFile
 import com.jian.pillreminder.ui.screens.BackupReminderBanner
 import com.jian.pillreminder.ui.screens.BackupScreen
 import com.jian.pillreminder.ui.screens.EditMedicationScreen
@@ -205,28 +204,15 @@ private fun PillApp(relaunchSignal: Int = 0) {
         mutableStateOf<Pair<BackupFile, BackupSummary>?>(null)
     }
 
-    // 选备份文件夹：拿持久化授权，之后每次导出直接写入，不用反复选
-    val pickFolderLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            val ok = runCatching {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
-            }.isSuccess
-            if (ok) {
-                vm.setBackupFolder(uri.toString())
-                backupMessage = "文件夹已设好，现在可以点「备份到这个文件夹」了。"
-            } else {
-                backupMessage = "没能获得这个文件夹的长期访问权限，换一个试试。"
-            }
-        }
-    }
-
-    // 另存为：用户自己挑位置和文件名
-    val createFileLauncher = rememberLauncherForActivityResult(
+    /**
+     * 备份：弹系统的"新建文件"选择器，文件名已经填好，用户只要选个位置按保存。
+     *
+     * 用 CreateDocument 而不是 OpenDocumentTree，是因为后者要用户先"授权一个文件夹"、
+     * 多一道权限弹窗，还得让 App 把这个文件夹记下来——多出一个用户得先理解的概念。
+     * CreateDocument 一个弹窗走完，且系统自己会记住上次去过哪，下次想换位置直接在
+     * 选择器里翻到别处就行。
+     */
+    val backupFileLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
         if (uri != null) {
@@ -569,67 +555,15 @@ private fun PillApp(relaunchSignal: Int = 0) {
             }
 
             composable(Dest.Backup.route) {
-                val folderName = remember(appData.backupFolderUri) {
-                    appData.backupFolderUri?.let { uriStr ->
-                        runCatching {
-                            DocumentFile.fromTreeUri(context, Uri.parse(uriStr))?.name
-                        }.getOrNull() ?: "已选择的文件夹"
-                    }
-                }
                 BackupScreen(
                     lastBackupDate = appData.lastBackupDate,
                     daysSinceBackup = vm.daysSinceBackup(),
-                    folderName = folderName,
                     medicationCount = appData.medications.size,
                     logCount = appData.logs.size,
                     busy = backupBusy,
                     message = backupMessage,
-                    onPickFolder = { pickFolderLauncher.launch(null) },
-                    onExportToFolder = {
-                        val uriStr = appData.backupFolderUri
-                        if (uriStr == null) {
-                            backupMessage = "还没选备份文件夹。"
-                        } else {
-                            backupBusy = true
-                            val r = BackupManager.writeToFolder(
-                                context,
-                                Uri.parse(uriStr),
-                                vm.buildBackupContent(),
-                                BackupManager.suggestFileName()
-                            )
-                            backupBusy = false
-                            backupMessage = if (r.isSuccess) {
-                                vm.markBackedUp()
-                                "已备份为「" + r.getOrNull() + "」。如果这个文件夹是云盘的同步目录，云盘会自动上传。"
-                            } else {
-                                "备份失败：" + (r.exceptionOrNull()?.message ?: "未知原因")
-                            }
-                        }
-                    },
-                    onExportToFile = { createFileLauncher.launch(BackupManager.suggestFileName()) },
-                    onShare = {
-                        runCatching {
-                            val dir = java.io.File(context.cacheDir, "backup").apply { mkdirs() }
-                            val f = java.io.File(dir, BackupManager.suggestFileName())
-                            f.writeText(vm.buildBackupContent())
-                            val shareUri = FileProvider.getUriForFile(
-                                context, context.packageName + ".fileprovider", f
-                            )
-                            context.startActivity(
-                                Intent.createChooser(
-                                    Intent(Intent.ACTION_SEND).apply {
-                                        type = "application/json"
-                                        putExtra(Intent.EXTRA_STREAM, shareUri)
-                                        putExtra(Intent.EXTRA_SUBJECT, "安服数据备份")
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    },
-                                    "分享备份"
-                                )
-                            )
-                            vm.markBackedUp()
-                        }.onFailure {
-                            backupMessage = "分享失败：" + (it.message ?: "未知原因")
-                        }
+                    onBackup = {
+                        backupFileLauncher.launch(BackupManager.suggestFileName())
                     },
                     onImport = {
                         openFileLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))

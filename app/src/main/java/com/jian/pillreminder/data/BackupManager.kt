@@ -2,7 +2,6 @@ package com.jian.pillreminder.data
 
 import android.content.Context
 import android.net.Uri
-import androidx.documentfile.provider.DocumentFile
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
@@ -88,34 +87,7 @@ object BackupManager {
         return json.encodeToString(backup)
     }
 
-    /**
-     * 写入到用户先前授权的文件夹（云盘同步目录）。
-     * 返回写入的文件名；失败返回 null。
-     */
-    fun writeToFolder(
-        context: Context,
-        folderUri: Uri,
-        content: String,
-        fileName: String
-    ): Result<String> = runCatching {
-        val dir = DocumentFile.fromTreeUri(context, folderUri)
-            ?: error("无法访问所选文件夹，可能已被删除或权限已失效")
-        if (!dir.canWrite()) error("对所选文件夹没有写入权限，请重新选择")
-
-        // 同名文件先删掉，避免云盘目录里堆出 xxx(1).json
-        dir.findFile(fileName)?.delete()
-
-        val file = dir.createFile("application/json", fileName)
-            ?: error("在所选文件夹里创建文件失败")
-
-        context.contentResolver.openOutputStream(file.uri)?.use { out ->
-            out.write(content.toByteArray())
-        } ?: error("打开输出流失败")
-
-        fileName
-    }.onFailure { android.util.Log.e(TAG, "写入备份到文件夹失败", it) }
-
-    /** 写入到用户通过「另存为」选中的具体文件。 */
+    /** 写入到用户在系统选择器里挑好的文件。 */
     fun writeToFile(context: Context, fileUri: Uri, content: String): Result<Unit> =
         runCatching {
             context.contentResolver.openOutputStream(fileUri, "wt")?.use { out ->

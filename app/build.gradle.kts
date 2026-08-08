@@ -55,8 +55,10 @@ android {
         //            读盘失败不再静默清空、写盘改为原子替换
         // 5 = 1.1.3  文字精简：设置页、备份页、关于页、今日页、药箱页、统计页；
         //            删所有灰色分割线；排序提醒体检/关于页等几处文案综合调整
-        versionCode = 5
-        versionName = "1.1.3"
+        // 6 = 1.1.4  备份简化成一个按钮：点开直接选位置、立即写入，
+        //            不再需要先配置一个"备份文件夹"
+        versionCode = 6
+        versionName = "1.1.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -150,8 +152,6 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.mlkit.text.recognition.chinese)
 
-    // 备份导出：持久化用户授权的文件夹（云盘同步目录）
-    implementation(libs.androidx.documentfile)
     debugImplementation(libs.androidx.ui.tooling)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
