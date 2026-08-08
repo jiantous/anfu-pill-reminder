@@ -58,9 +58,21 @@ class ReminderReceiver : BroadcastReceiver() {
                 // 同步落盘：onReceive 返回后进程可能立刻被回收。
                 repo.removeDeferredReminder(medId, date, time, syncWrite = true)
 
+                val doseDate = runCatching { LocalDate.parse(date) }.getOrNull() ?: LocalDate.now()
+
+                // 已经在 App 里打过卡（提前吃/跳过），不该再弹通知。
+                // 常见场景：用户 8 点就把 9 点那顿吃了，9 点到时再响铃会让人困惑。
+                if (repo.data.value.logs.any {
+                    it.medicationId == medId && it.date == date &&
+                    it.time == time && it.status != DoseStatus.PENDING
+                }) {
+                    android.util.Log.i("PillReceiver", "${med.name} 已在 ${date} ${time.format()} 处理好，跳过提醒")
+                    Reminders.scheduleFor(context, med)
+                    return
+                }
+
                 // 兜底：暂停期内不该响。正常流程里 scheduleFor 不会排暂停中的药，
                 // 但用户可能在闹钟已排好之后才点暂停，那个闹钟仍在系统里。
-                val doseDate = runCatching { LocalDate.parse(date) }.getOrNull() ?: LocalDate.now()
                 if (ScheduleEngine.isPausedOn(med, doseDate)) {
                     android.util.Log.i("PillReceiver", "${med.name} 在暂停期内，不提醒")
                     Reminders.scheduleFor(context, med)

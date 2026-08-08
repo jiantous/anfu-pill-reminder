@@ -23,7 +23,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -101,26 +100,14 @@ fun SettingsScreen(
 
             // ---- 提醒 ----
             SettingsSection("提醒") {
-                // 不能写"会一直留在通知栏"：Android 14 起手动划掉照样能划掉，
-                // 只有绑前台服务的通知才划不掉。承诺做不到的事比不承诺更糟。
                 SwitchRow(
-                    title = "提醒保留到你确认",
-                    subtitle = "点通知进入 App 后提醒还在，要点「已服用」或「跳过」才消失。",
+                    title = "提醒保留到确认",
                     checked = ongoingNotification,
                     onCheckedChange = onOngoingNotificationChange
                 )
-                HorizontalDivider(Modifier.padding(vertical = 12.dp))
-                // 功能名在上、参数在下。不把上面那个开关也叫「稍后提醒」：
-                // 它跟延后无关，同名会让人以为能在那里关掉延后功能。
+                Spacer(Modifier.height(20.dp))
                 Text("稍后提醒", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    "通知上点「稍后提醒」，延后多久再响",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
                 Spacer(Modifier.height(8.dp))
-                // FlowRow 而不是 Row：5 个档位一行放不下，Row 会把「60 分钟」挤出屏幕
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -137,18 +124,12 @@ fun SettingsScreen(
                 OutlinedButton(
                     onClick = onOpenReminderSetup,
                     modifier = Modifier.fillMaxWidth().height(50.dp)
-                ) { Text("检查提醒能不能正常响") }
+                ) { Text("检查提醒功能是否正常") }
             }
 
             // ---- 数据 ----
             SettingsSection("数据") {
-                Text(
-                    "把服药记录导成表格，可以用 Excel 打开，也方便复诊时给医生看。" +
-                        "漏服和跳过都会标出来。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(4.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -235,19 +216,21 @@ private fun SettingsSection(
 @Composable
 private fun SwitchRow(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(2.dp))
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (subtitle != null) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         Spacer(Modifier.width(12.dp))
         Switch(checked = checked, onCheckedChange = onCheckedChange)

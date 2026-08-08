@@ -19,7 +19,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -27,7 +26,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -108,7 +106,7 @@ fun BackupScreen(
                     Spacer(Modifier.height(12.dp))
                     InfoRow("药品", "$medicationCount 种")
                     InfoRow("服药记录", "$logCount 条")
-                    HorizontalDivider(Modifier.padding(vertical = 12.dp))
+                    Spacer(Modifier.height(16.dp))
                     InfoRow(
                         "上次备份",
                         when {
@@ -136,13 +134,7 @@ fun BackupScreen(
             ) {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
                     if (folderName == null) {
-                        Text(
-                            "先选一个文件夹放备份。建议选微云 / 百度网盘 / OneDrive 等云盘 App 的自动同步目录，" +
-                                "这样每次导出后云盘会自己上传，换手机时直接从云盘取。",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(14.dp))
+                        Spacer(Modifier.height(4.dp))
                         Button(
                             onClick = onPickFolder,
                             enabled = !busy,
@@ -153,12 +145,7 @@ fun BackupScreen(
                             Text("选择备份文件夹")
                         }
                     } else {
-                        Text(
-                            "导出后会在「$folderName」里生成一个备份文件，同名旧文件会被替换。",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(14.dp))
+                        Spacer(Modifier.height(4.dp))
                         Button(
                             onClick = onExportToFolder,
                             enabled = !busy,
@@ -174,9 +161,7 @@ fun BackupScreen(
                         }
                     }
 
-                    Spacer(Modifier.height(4.dp))
-                    HorizontalDivider()
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(20.dp))
                     Text(
                         "其它导出方式",
                         style = MaterialTheme.typography.labelLarge,
@@ -199,13 +184,7 @@ fun BackupScreen(
                             Text("分享")
                         }
                     }
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "「分享」可以直接发到微信收藏或发给自己，也是一种备份。",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
+                    }
             }
 
             Spacer(Modifier.height(20.dp))
@@ -221,8 +200,7 @@ fun BackupScreen(
             ) {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
                     Text(
-                        "换了新手机：装好安服后点下面按钮，选中云盘里的备份文件即可恢复。" +
-                            "恢复前会先告诉你备份里有什么，由你决定覆盖还是合并。",
+                        "选中备份文件即可恢复，导入前会告诉你备份里有什么，可覆盖也可合并。",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -235,32 +213,6 @@ fun BackupScreen(
                         Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("选择备份文件并恢复")
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // ---- 说明 ----
-            Card(
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(Modifier.padding(14.dp)) {
-                    Icon(Icons.Filled.Info, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text("关于数据安全", style = MaterialTheme.typography.titleSmall)
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "备份文件是普通文本，不加密，能直接打开看。里面只有你的药品和服药记录，" +
-                                "不包含任何账号信息。它不会自动上传到任何服务器——存到哪、给谁看，完全由你决定。",
-                            style = MaterialTheme.typography.bodySmall
-                        )
                     }
                 }
             }
@@ -398,11 +350,6 @@ fun BackupReminderBanner(
                     style = MaterialTheme.typography.titleSmall
                 )
             }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "导出一份备份，换手机或手机丢了都能恢复。",
-                style = MaterialTheme.typography.bodySmall
-            )
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text("不再提示") }
