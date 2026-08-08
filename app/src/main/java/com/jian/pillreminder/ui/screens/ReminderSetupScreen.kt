@@ -82,8 +82,7 @@ fun ReminderSetupScreen(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "手机的省电机制会冻结后台应用，导致该吃药时没有提醒。" +
-                "下面 ${checks.size} 项设置好，提醒才靠得住。",
+            "手机省电机制会冻结后台应用，准时提醒还需 ${checks.size} 项设置。",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth(),

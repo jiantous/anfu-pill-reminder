@@ -53,8 +53,10 @@ android {
         // 3 = 1.1.1  修复稍后提醒排的延后闹钟在 App 内打卡后没被撤销的问题
         // 4 = 1.1.2  关掉系统自动备份（会用陈旧的云端备份覆盖本地数据）；
         //            读盘失败不再静默清空、写盘改为原子替换
-        versionCode = 4
-        versionName = "1.1.2"
+        // 5 = 1.1.3  文字精简：设置页、备份页、关于页、今日页、药箱页、统计页；
+        //            删所有灰色分割线；排序提醒体检/关于页等几处文案综合调整
+        versionCode = 5
+        versionName = "1.1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

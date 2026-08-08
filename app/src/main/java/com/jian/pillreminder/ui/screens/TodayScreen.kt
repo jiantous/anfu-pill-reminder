@@ -130,9 +130,7 @@ fun TodayScreen(
                 EmptyState(
                     icon = Icons.Filled.Today,
                     title = if (noMedsAtAll) "还没有添加药品" else "这一天不用吃药",
-                    subtitle = if (noMedsAtAll)
-                        "点右下角的 + 添加你的第一种药，设好时间我就会准时提醒你"
-                    else "按你设定的用药周期，今天没有需要服用的药"
+                    subtitle = if (noMedsAtAll) "" else "按你设定的用药周期，今天没有需要服用的药"
                 )
             }
             // 完全空的时候给个入口先看看界面长什么样。示例只是演示，
@@ -204,9 +202,8 @@ fun TodayScreen(
             initialMinute = base.minute,
             title = "改这一次的时间",
             supportingText = if (item.movedTo != null)
-                "原定 ${item.time.format()}，现在是 ${item.movedTo.format()}。" +
-                    "只影响这一次，不改用药计划。"
-            else "只改今天这一次，不影响以后的提醒时间。",
+                "原定 ${item.time.format()}，现在是 ${item.movedTo.format()}。"
+            else "只改今天这一次。",
             onDismiss = { rescheduling = null },
             onConfirm = { h, m ->
                 vm.rescheduleDose(item, com.jian.pillreminder.data.TimeOfDay(h, m))
