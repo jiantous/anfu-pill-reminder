@@ -256,36 +256,3 @@ fun ImportConfirmDialog(
     )
 }
 
-/** 首页横幅：很久没备份时提醒。 */
-@Composable
-fun BackupReminderBanner(
-    days: Long?,
-    onOpenBackup: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Card(
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 0.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.CloudUpload, null, Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    if (days == null) "还没备份过数据" else "上次备份是 $days 天前",
-                    style = MaterialTheme.typography.titleSmall
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text("不再提示") }
-                Spacer(Modifier.width(4.dp))
-                FilledTonalButton(onClick = onOpenBackup) { Text("去备份") }
-            }
-        }
-    }
-}

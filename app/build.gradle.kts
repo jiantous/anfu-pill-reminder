@@ -57,8 +57,11 @@ android {
         //            删所有灰色分割线；排序提醒体检/关于页等几处文案综合调整
         // 6 = 1.1.4  备份简化成一个按钮：点开直接选位置、立即写入，
         //            不再需要先配置一个"备份文件夹"
-        versionCode = 6
-        versionName = "1.1.4"
+        // 7 = 1.1.5  药箱排序、App 启动闹钟自检、暂停恢复当天提醒；
+        //            界面统一（卡片 padding、分组标签圆点）；
+        //            删除今日页备份提示横幅
+        versionCode = 7
+        versionName = "1.1.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
