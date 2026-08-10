@@ -332,9 +332,6 @@ class MedRepository private constructor(private val file: File) {
 
     fun markBackedUp(date: String) = update { it.copy(lastBackupDate = date) }
 
-    fun setBackupReminderDismissed(dismissed: Boolean) =
-        update { it.copy(backupReminderDismissed = dismissed) }
-
     /** 导入备份：整体替换内存与磁盘上的数据，同步落盘确保不丢。 */
     fun replaceAll(newData: AppData) = update(sync = true) { newData }
 

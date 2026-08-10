@@ -198,9 +198,7 @@ data class AppData(
     val healthBannerDismissed: Boolean = false,
     /** 上次成功导出备份的日期（ISO yyyy-MM-dd），null 表示从未备份。 */
     val lastBackupDate: String? = null,
-    // 曾有 backupFolderUri：记住用户授权的备份文件夹，供"一键备份到老地方"用。
-    // 现在备份改成每次都弹系统选择器，这个状态就没用了，已删。
-    // 老数据文件里残留的这个键会被忽略（Json.ignoreUnknownKeys = true）。
-    /** 用户关闭了"很久没备份"的提醒。 */
-    val backupReminderDismissed: Boolean = false
+    // 曾有 backupFolderUri 和 backupReminderDismissed。
+    // 前者是授权文件夹的持久化 URI，后者是关闭备份横幅。
+    // 备份横幅已删，这两个字段也没用了。老数据文件里残留的键会被忽略。
 )

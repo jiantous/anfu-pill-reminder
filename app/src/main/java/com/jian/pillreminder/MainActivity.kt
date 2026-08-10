@@ -81,7 +81,6 @@ import com.jian.pillreminder.data.BackupFile
 import com.jian.pillreminder.data.BackupManager
 import com.jian.pillreminder.data.BackupSummary
 import androidx.core.content.FileProvider
-import com.jian.pillreminder.ui.screens.BackupReminderBanner
 import com.jian.pillreminder.ui.screens.BackupScreen
 import com.jian.pillreminder.ui.screens.EditMedicationScreen
 import com.jian.pillreminder.ui.screens.ImportConfirmDialog
@@ -437,28 +436,13 @@ private fun PillApp(relaunchSignal: Int = 0) {
                     permissionBanner = run {
                         val pending = healthChecks.filterNot { it.granted }
                         val showHealth = pending.isNotEmpty() && !appData.healthBannerDismissed
-                        val backupDays = vm.daysSinceBackup()
-                        // 超过 30 天没备份（或从未备份且已有药）才提醒，避免刚装就啰嗦
-                        val showBackup = !appData.backupReminderDismissed &&
-                            appData.medications.isNotEmpty() &&
-                            (backupDays == null || backupDays > 30)
                         when {
-                            // 提醒能不能响比备份更要紧，优先显示
                             showHealth -> {
                                 {
                                     ReminderHealthBanner(
                                         pending = pending,
                                         onOpenSetup = { nav.navigate(Dest.Setup.route) },
                                         onDismiss = { vm.dismissHealthBanner() }
-                                    )
-                                }
-                            }
-                            showBackup -> {
-                                {
-                                    BackupReminderBanner(
-                                        days = backupDays,
-                                        onOpenBackup = { nav.navigate(Dest.Backup.route) },
-                                        onDismiss = { vm.dismissBackupReminder() }
                                     )
                                 }
                             }

@@ -133,7 +133,7 @@ fun SettingsScreen(
             SettingsSection("数据") {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "服药记录导出为 CSV 表格，可用 Excel 打开，适合复诊时给医生看。",
+                    "服药记录导出为 CSV 表格，可用 Excel 打开。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

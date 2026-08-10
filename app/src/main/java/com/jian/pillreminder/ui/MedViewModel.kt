@@ -254,8 +254,6 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
 
     fun markBackedUp() = repo.markBackedUp(LocalDate.now().toString())
 
-    fun dismissBackupReminder() = repo.setBackupReminderDismissed(true)
-
     fun daysSinceBackup(): Long? = BackupManager.daysSince(repo.data.value.lastBackupDate)
 
     /** 应用导入的备份，并重排全部闹钟（药品和时间可能都变了）。 */

@@ -103,6 +103,7 @@ fun TodayScreen(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // 备份横幅已删（用户要求），只剩提醒体检横幅
         permissionBanner?.let { banner ->
             item { banner() }
         }
@@ -133,8 +134,6 @@ fun TodayScreen(
                     subtitle = if (noMedsAtAll) "" else "按你设定的用药周期，今天没有需要服用的药"
                 )
             }
-            // 完全空的时候给个入口先看看界面长什么样。示例只是演示，
-            // 不会真的提醒，卡片上有「示例」标记，可以一键清掉。
             if (noMedsAtAll) {
                 item {
                     Row(
@@ -312,7 +311,7 @@ private fun LowStockBanner(meds: List<Medication>) {
         ) {
             Icon(Icons.Filled.Inventory2, contentDescription = null)
             Spacer(Modifier.width(12.dp))
-            Column {
+            Column(Modifier.weight(1f)) {
                 Text("有药快用完了", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(2.dp))
                 Text(
