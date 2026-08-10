@@ -271,7 +271,7 @@ fun BackupReminderBanner(
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.CloudUpload, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))

@@ -215,7 +215,7 @@ private fun SettingsSection(
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(16.dp), content = content)
+        Column(Modifier.padding(20.dp), content = content)
     }
     Spacer(Modifier.height(20.dp))
 }

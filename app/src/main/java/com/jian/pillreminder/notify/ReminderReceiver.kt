@@ -35,6 +35,23 @@ class ReminderReceiver : BroadcastReceiver() {
         }
 
         val medId = intent.getStringExtra(Reminders.EXTRA_MED_ID) ?: return
+
+        // 恢复提醒不带时刻 extras，单独处理
+        if (intent.action == Reminders.ACTION_RESUME) {
+            val med = repo.data.value.medications.firstOrNull { it.id == medId }
+            if (med == null) {
+                Reminders.cancelResume(context, medId)
+                return
+            }
+            // 恢复日当天若仍在暂停期（用户中途又延长了暂停），不发
+            if (ScheduleEngine.isPausedNow(med)) {
+                android.util.Log.i("PillReceiver", "${med.name} 仍在暂停期，恢复提醒跳过")
+                return
+            }
+            Reminders.showResumeNotification(context, med)
+            return
+        }
+
         val date = intent.getStringExtra(Reminders.EXTRA_DATE) ?: LocalDate.now().toString()
         val hour = intent.getIntExtra(Reminders.EXTRA_HOUR, -1)
         val minute = intent.getIntExtra(Reminders.EXTRA_MINUTE, -1)

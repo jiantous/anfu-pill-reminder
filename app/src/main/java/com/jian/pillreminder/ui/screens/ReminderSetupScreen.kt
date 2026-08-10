@@ -156,7 +156,7 @@ private fun CheckRow(check: ReminderHealth.Check, onFix: () -> Unit) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(16.dp),
+            Modifier.fillMaxWidth().padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
@@ -187,7 +187,10 @@ private fun CheckRow(check: ReminderHealth.Check, onFix: () -> Unit) {
                 Text(check.title, style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    if (check.granted) "已设置好" else check.why,
+                    // 纯展示项（Action.None）显示自带的 why 文案，比如"今天还有 3 次提醒待响"；
+                    // 其余 granted 项统一显示"已设置好"
+                    if (check.action is ReminderHealth.Action.None) check.why
+                    else if (check.granted) "已设置好" else check.why,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -229,7 +232,7 @@ fun ReminderHealthBanner(
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.NotificationsActive, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))

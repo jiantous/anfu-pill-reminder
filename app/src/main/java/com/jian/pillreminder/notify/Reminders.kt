@@ -50,6 +50,8 @@ object Reminders {
     const val ACTION_TAKEN = "com.jian.pillreminder.TAKEN"
     const val ACTION_SNOOZE = "com.jian.pillreminder.SNOOZE"
     const val ACTION_SKIP = "com.jian.pillreminder.SKIP"
+    /** 暂停到期、今天恢复用药的提醒。 */
+    const val ACTION_RESUME = "com.jian.pillreminder.RESUME"
 
     fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -259,6 +261,11 @@ object Reminders {
             armDeferred(context, med, d.originalTime, d.date, d.triggerAtMillis)
         }
 
+        // 暂停中的药，重建恢复闹钟——重启后或守护任务跑完都不丢。
+        for (med in meds) {
+            if (med.pausedUntil != null) scheduleResume(context, med, med.pausedUntil)
+        }
+
         ReminderWatchdog.schedule(context)
     }
 
@@ -378,6 +385,98 @@ object Reminders {
         if (pi != null) {
             am.cancel(pi)
             pi.cancel()
+        }
+    }
+
+    // ---- 暂停恢复提醒 ----
+    //
+    // 暂停到期后是静默恢复的：[ScheduleEngine.isPausedOn] 一过 pausedUntil 当天，
+    // 次日自动继续排闹钟。但用户未必知道"今天又开始要吃了"——尤其暂停跨度长时
+    // （住院、出差），到恢复那天用户根本想不起来。所以暂停设定时，在恢复日当天
+    // 早上排一个一次性闹钟，到点弹一条"今天恢复吃药"的通知。
+    //
+    // 恢复日 = pausedUntil 的次日。触发时刻固定 8:00：太早会扰人清梦，而各药首次
+    // 时刻不一，挑一个稳妥的固定点比跟着某药走简单、也省一个闹钟槽。
+
+    /** 恢复闹钟的 requestCode：和常规/延后槽都要岔开。
+     *  常规槽是 medId.hashCode()*31 + minutesOfDay；延后槽是它异或 0x5A5A。
+     *  恢复槽只取决于 medId（不挂时刻），用一个独立的固定偏移再异或一次。 */
+    private fun resumeRequestCode(medId: String): Int =
+        (medId.hashCode() * 31) xor 0x3C3C and 0x0FFFFFFF
+
+    private fun resumeNotificationId(medId: String): Int = resumeRequestCode(medId)
+
+    /**
+     * 在 [pausedUntil] 的次日早上 8:00 排一个恢复提醒。已过期则不排。
+     * [pausedUntil] 为 null（取消暂停）时撤掉已有的恢复闹钟。
+     */
+    fun scheduleResume(context: Context, med: Medication, pausedUntil: String?) {
+        cancelResume(context, med.id)
+        if (med.isSample || med.archived || !med.remindersEnabled) return
+        val until = pausedUntil ?: return
+        val endDate = runCatching { java.time.LocalDate.parse(until) }.getOrNull() ?: return
+        val resumeDate = endDate.plusDays(1)
+        val triggerAt = ScheduleEngine.toEpochMillis(
+            LocalDateTime.of(resumeDate, java.time.LocalTime.of(8, 0))
+        )
+        if (triggerAt <= System.currentTimeMillis()) return
+        val am = context.getSystemService(AlarmManager::class.java) ?: return
+        val pi = PendingIntent.getBroadcast(
+            context,
+            resumeRequestCode(med.id),
+            Intent(context, ReminderReceiver::class.java).apply {
+                action = ACTION_RESUME
+                putExtra(EXTRA_MED_ID, med.id)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        runCatching {
+            if (canScheduleExact(context)) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+            } else {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+            }
+        }
+    }
+
+    /** 撤掉某药的恢复提醒闹钟和通知栏上的恢复通知。 */
+    fun cancelResume(context: Context, medId: String) {
+        val am = context.getSystemService(AlarmManager::class.java) ?: return
+        val pi = PendingIntent.getBroadcast(
+            context,
+            resumeRequestCode(medId),
+            Intent(context, ReminderReceiver::class.java).apply { action = ACTION_RESUME },
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        if (pi != null) {
+            am.cancel(pi)
+            pi.cancel()
+        }
+        runCatching { NotificationManagerCompat.from(context).cancel(resumeNotificationId(medId)) }
+    }
+
+    /** 恢复闹钟到点时弹出"今天恢复用药"通知。 */
+    fun showResumeNotification(context: Context, med: Medication) {
+        ensureChannels(context)
+        if (!hasNotificationPermission(context)) return
+        val openApp = PendingIntent.getActivity(
+            context, resumeNotificationId(med.id),
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val n = NotificationCompat.Builder(context, CHANNEL_DOSE)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("今天恢复吃 ${med.name}")
+            .setContentText("暂停已结束，按原计划继续")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(openApp)
+            .build()
+        runCatching {
+            NotificationManagerCompat.from(context).notify(resumeNotificationId(med.id), n)
         }
     }
 

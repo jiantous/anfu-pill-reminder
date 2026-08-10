@@ -287,7 +287,7 @@ private fun MonthCalendarCard(
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(Modifier.fillMaxWidth().padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     month.format(DateTimeFormatter.ofPattern("yyyy 年 M 月")),

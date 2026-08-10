@@ -40,12 +40,15 @@ object ReminderHealth {
         data object RequestNotificationPermission : Action
         /** 打开一个系统设置页。 */
         data class OpenSettings(val intents: List<Intent>) : Action
+        /** 纯展示项：无需用户操作，只显示当前状态。 */
+        data object None : Action
     }
 
     fun checks(context: Context): List<Check> = listOf(
         notificationCheck(context),
         exactAlarmCheck(context),
-        batteryCheck(context)
+        batteryCheck(context),
+        armedTodayCheck(context)
     )
 
     /** 全部就绪时不再打扰用户。 */
@@ -127,6 +130,36 @@ object ReminderHealth {
         ),
         manualStep = "在打开的页面里点「电池」，选择「无限制」或「不优化」。"
     )
+
+    // ---- 4. 今日提醒已就绪（只读） ----
+
+    /**
+     * 展示今天还有几次提醒待响。数字由 ScheduleEngine 算（和今日清单同源），
+     * 不是直接查 AlarmManager——Android 没有列出自家闹钟的 API。这里只让用户
+     * 重启后能一眼确认"提醒在不在账上"，实际闹钟由 [rescheduleAll] 全量重排兜底。
+     */
+    private fun armedTodayCheck(context: Context): Check {
+        val today = java.time.LocalDate.now()
+        val data = com.jian.pillreminder.data.MedRepository.get(context).data.value
+        // 只数会真的提醒的药：示例药不排闹钟，算进去会和实际响铃数对不上
+        val realMeds = data.medications.filterNot { it.isSample || it.archived || !it.remindersEnabled }
+        val doses = com.jian.pillreminder.domain.ScheduleEngine.dosesForDate(
+            realMeds, data.logs, today, data.doseOverrides
+        )
+        val pending = doses.count { it.status == com.jian.pillreminder.data.DoseStatus.PENDING }
+        val text = when {
+            pending > 0 -> "今天还有 $pending 次提醒待响"
+            else -> "今日无待响提醒"
+        }
+        return Check(
+            id = "armed_today",
+            title = "今日提醒",
+            why = text,
+            granted = true,
+            critical = false,
+            action = Action.None
+        )
+    }
 
     // ---- 通用 Intent ----
 

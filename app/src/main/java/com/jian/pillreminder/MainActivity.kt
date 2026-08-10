@@ -280,6 +280,7 @@ private fun PillApp(relaunchSignal: Int = 0) {
                 }
             is ReminderHealth.Action.OpenSettings ->
                 ReminderHealth.launchFirstAvailable(context, a.intents)
+            ReminderHealth.Action.None -> { /* 纯展示项，无操作 */ }
         }
     }
 

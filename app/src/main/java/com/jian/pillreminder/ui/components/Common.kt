@@ -261,6 +261,33 @@ fun MiniBarChart(
     }
 }
 
+/** 分组标签：圆点 + 文字 + 计数。今日页和药箱页共用。 */
+@Composable
+fun GroupLabel(
+    text: String,
+    count: Int,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.padding(top = 6.dp, start = 4.dp)
+    ) {
+        Box(
+            Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "$text · $count",
+            style = MaterialTheme.typography.titleSmall,
+            color = color
+        )
+    }
+}
+
 @Composable
 fun VerticalSpacer(height: Dp) = Spacer(Modifier.height(height))
 

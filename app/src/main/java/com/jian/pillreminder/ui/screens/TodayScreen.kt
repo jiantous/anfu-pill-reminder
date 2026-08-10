@@ -53,7 +53,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -65,6 +64,7 @@ import com.jian.pillreminder.notify.Reminders
 import com.jian.pillreminder.ui.MedViewModel
 import com.jian.pillreminder.ui.components.CheckCircle
 import com.jian.pillreminder.ui.components.EmptyState
+import com.jian.pillreminder.ui.components.GroupLabel
 import com.jian.pillreminder.ui.components.MedBadge
 import com.jian.pillreminder.ui.components.TimePickerDialog
 import com.jian.pillreminder.ui.theme.medColorAt
@@ -307,7 +307,7 @@ private fun LowStockBanner(meds: List<Medication>) {
         )
     ) {
         Row(
-            Modifier.padding(16.dp),
+            Modifier.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Filled.Inventory2, contentDescription = null)
@@ -323,27 +323,6 @@ private fun LowStockBanner(meds: List<Medication>) {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun GroupLabel(text: String, count: Int, color: Color) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(top = 6.dp, start = 4.dp)
-    ) {
-        Box(
-            Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(color)
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            "$text · $count",
-            style = MaterialTheme.typography.titleSmall,
-            color = color
-        )
     }
 }
 

@@ -51,6 +51,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,6 +67,7 @@ import com.jian.pillreminder.notify.Reminders
 import com.jian.pillreminder.ui.MedViewModel
 import com.jian.pillreminder.ui.components.DatePickerDialog
 import com.jian.pillreminder.ui.components.EmptyState
+import com.jian.pillreminder.ui.components.GroupLabel
 import com.jian.pillreminder.ui.components.MedBadge
 import com.jian.pillreminder.ui.theme.medColorAt
 import java.time.LocalDate
@@ -84,8 +86,10 @@ fun MedicationsScreen(
     var stockEditing by remember { mutableStateOf<Medication?>(null) }
     var pendingClearSamples by remember { mutableStateOf(false) }
     var pausing by remember { mutableStateOf<Medication?>(null) }
+    // 排序方式用 rememberSaveable：切到别的页面回来还在
+    var sortMode by rememberSaveable { mutableStateOf(MedSortMode.NextDose) }
 
-    val active = meds.filterNot { it.archived }
+    val active = remember(meds, sortMode) { sortMeds(meds.filterNot { it.archived }, sortMode) }
     val archived = meds.filter { it.archived }
 
     if (meds.isEmpty()) {
@@ -107,13 +111,17 @@ fun MedicationsScreen(
             item { SampleNotice(onClear = { pendingClearSamples = true }) }
         }
 
+        // 药多了排序才有意义，≤3 种时藏起来省地方
+        if (active.size > 3) {
+            item { SortBar(sortMode, onSort = { sortMode = it }) }
+        }
+
         if (active.isNotEmpty()) {
             item {
-                Text(
-                    "在用药品 · ${active.size}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 4.dp)
+                GroupLabel(
+                    text = "在用药品",
+                    count = active.size,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             items(active, key = { it.id }) { med ->
@@ -137,11 +145,10 @@ fun MedicationsScreen(
 
         if (archived.isNotEmpty()) {
             item {
-                Text(
-                    "已停用 · ${archived.size}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                GroupLabel(
+                    text = "已停用",
+                    count = archived.size,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             items(archived, key = { it.id }) { med ->
@@ -220,6 +227,68 @@ fun MedicationsScreen(
                 stockEditing = null
             }
         )
+    }
+}
+
+/** 药箱排序方式。 */
+private enum class MedSortMode(val label: String) {
+    /** 按下一次该吃的时间——最贴近"接下来该吃什么"。 */
+    NextDose("下次服用"),
+    Name("药名"),
+    /** 库存越紧的排越前，没设库存的排最后。 */
+    Stock("库存")
+}
+
+/**
+ * 计算排序用的"下次服用时刻"。拿不到（已停用/关提醒/疗程结束）的给一个极大值，
+ * 让它们沉到底——它们本来就不是"接下来要吃"的。
+ */
+private fun nextDoseEpoch(med: Medication): Long {
+    if (med.archived || !med.remindersEnabled || med.times.isEmpty()) return Long.MAX_VALUE
+    return ScheduleEngine.nextOccurrence(med, java.time.LocalDateTime.now())
+        ?.let { ScheduleEngine.toEpochMillis(it) } ?: Long.MAX_VALUE
+}
+
+/** 按所选方式排序，返回一个稳定的新列表。 */
+private fun sortMeds(list: List<Medication>, mode: MedSortMode): List<Medication> = when (mode) {
+    MedSortMode.NextDose -> list.sortedBy { nextDoseEpoch(it) }
+    MedSortMode.Name -> list.sortedBy { it.name.ifBlank { "未命名药品" } }
+    MedSortMode.Stock -> {
+        // (是否低库存, 现有量) 双关键字：低库存的优先，同档按现有量升序。
+        // 没设库存的 (false, MAX) 自然沉底。
+        list.sortedWith(compareBy(
+            { !(it.stockRemaining != null && it.stockRemaining <= it.stockThreshold) },
+            { it.stockRemaining ?: Double.MAX_VALUE }
+        ))
+    }
+}
+
+/** 排序选择条。 */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SortBar(mode: MedSortMode, onSort: (MedSortMode) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+    ) {
+        Text(
+            "排序",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.CenterVertically)
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            MedSortMode.entries.forEach { m ->
+                FilterChip(
+                    selected = mode == m,
+                    onClick = { onSort(m) },
+                    label = { Text(m.label, style = MaterialTheme.typography.labelMedium) }
+                )
+            }
+        }
     }
 }
 

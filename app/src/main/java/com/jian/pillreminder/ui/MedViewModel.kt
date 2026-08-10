@@ -89,6 +89,7 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteMedication(med: Medication) {
         Reminders.cancelFor(getApplication(), med)
+        Reminders.cancelResume(getApplication(), med.id)
         // 通知栏上可能还挂着这条药的提醒，不收掉的话点它没有任何反应
         Reminders.dismissAllFor(getApplication(), med)
         repo.deleteMedication(med.id)
@@ -99,9 +100,14 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
         repo.setArchived(med.id, updated.archived)
         if (updated.archived) {
             Reminders.cancelFor(getApplication(), med)
+            Reminders.cancelResume(getApplication(), med.id)
             Reminders.dismissAllFor(getApplication(), med)
         } else {
             Reminders.scheduleFor(getApplication(), updated)
+            // 重新启用时，如果还在暂停期，恢复闹钟也要补回来
+            if (updated.pausedUntil != null) {
+                Reminders.scheduleResume(getApplication(), updated, updated.pausedUntil)
+            }
         }
     }
 
@@ -198,6 +204,8 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
         Reminders.scheduleFor(getApplication(), updated)
         // 通知栏上可能还挂着这条药的提醒，暂停了就该收掉
         if (until != null) Reminders.dismissAllFor(getApplication(), updated)
+        // 排/撤恢复提醒：暂停时排到恢复日早上，取消暂停时撤掉
+        Reminders.scheduleResume(getApplication(), updated, until?.toString())
     }
 
     fun isPaused(med: Medication): Boolean = ScheduleEngine.isPausedNow(med)
@@ -255,6 +263,7 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
         // 先取消旧药的闹钟和已弹出的通知，避免被覆盖掉的药还在响
         repo.data.value.medications.forEach {
             Reminders.cancelFor(getApplication(), it)
+            Reminders.cancelResume(getApplication(), it.id)
             Reminders.dismissAllFor(getApplication(), it)
         }
         val merged = BackupManager.apply(repo.data.value, backup, mode)
