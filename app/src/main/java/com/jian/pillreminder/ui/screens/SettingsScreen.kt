@@ -16,13 +16,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -36,7 +37,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -70,9 +71,11 @@ fun SettingsScreen(
     onShareCsv: (Int?) -> Unit,
     onOpenReminderSetup: () -> Unit,
     onClearMessage: () -> Unit,
+    onOpenBackup: () -> Unit,
+    onOpenAbout: () -> Unit,
     onBack: () -> Unit
 ) {
-    var csvRangeIndex by remember { mutableStateOf(1) }
+    var csvRangeIndex by remember { mutableIntStateOf(1) }
     val selectedRange = CsvRanges[csvRangeIndex].first
 
     Scaffold(
@@ -106,7 +109,7 @@ fun SettingsScreen(
                     checked = ongoingNotification,
                     onCheckedChange = onOngoingNotificationChange
                 )
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
                 Text("稍后提醒", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
                 FlowRow(
@@ -122,8 +125,7 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                // 填色按钮 vs 线框 - 同 FilledTonalButton 效果
-                Button(
+                FilledTonalButton(
                     onClick = onOpenReminderSetup,
                     modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) { Text("检查提醒功能是否正常") }
@@ -131,9 +133,8 @@ fun SettingsScreen(
 
             // ---- 数据 ----
             SettingsSection("数据") {
-                Spacer(Modifier.height(4.dp))
                 Text(
-                    "服药记录导出为 CSV 表格，可用 Excel 打开。",
+                    "导出为 CSV 表格，可用 Excel 打开。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -171,16 +172,43 @@ fun SettingsScreen(
                         Text("分享")
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+
+                // 备份与恢复
+                Spacer(Modifier.height(16.dp))
                 Text(
-                    "目前有 $logCount 条打卡记录",
+                    "备份 JSON 格式文件存档，导入可恢复。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
+                Spacer(Modifier.height(8.dp))
+                FilledTonalButton(
+                    onClick = onOpenBackup,
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) {
+                    Icon(Icons.Filled.CloudUpload, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("备份与恢复")
+                }
 
-            // 「备份」和「关于」的入口在三点菜单里，这里不再放一份：
-            // 同一个页面两个入口，用户会以为是两个不同的东西。
+                }
+
+            // ---- 关于 ----
+            SettingsSection("关于") {
+                Text(
+                    "更新及反馈。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                FilledTonalButton(
+                    onClick = onOpenAbout,
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) {
+                    Icon(Icons.Filled.Info, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("关于安服")
+                }
+            }
 
             Spacer(Modifier.height(32.dp))
         }

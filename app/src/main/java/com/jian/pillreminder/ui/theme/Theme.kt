@@ -1,6 +1,8 @@
 package com.jian.pillreminder.ui.theme
 
 import android.os.Build
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -11,7 +13,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
+// M3 Expressive 弹性动画参数：比默认 spring 更"弹"，有 subtle 的过冲和回弹，
+// 符合 Material 3 Expressive 的"情感化动效"理念。
+// 用于打卡、进度条、选中态等需要给用户反馈感的交互。
+val ExpressiveSpring = spring<Float>(
+    dampingRatio = Spring.DampingRatioMediumBouncy,
+    stiffness = Spring.StiffnessMedium
+)
+
 // 回退配色（Android 11 及以下没有动态取色时使用）。与桌面图标同一套鼠尾草绿（淡雅、低饱和），贴近医疗/健康语义。
+// M3 Expressive 要求完整的 surfaceContainer 层级——从 lowest 到 highest，
+// 替代旧的 surface/surfaceVariant 来表现抬升。
 private val SeedLight = lightColorScheme(
     primary = Color(0xFF33705A),
     onPrimary = Color.White,
@@ -29,12 +41,18 @@ private val SeedLight = lightColorScheme(
     onError = Color.White,
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF410002),
-    background = Color(0xFFF8FBF7),
+    background = Color(0xFFF5F5F5),
     onBackground = Color(0xFF191C1A),
-    surface = Color(0xFFF8FBF7),
+    surface = Color(0xFFF5F5F5),
     onSurface = Color(0xFF191C1A),
     surfaceVariant = Color(0xFFDBE5DD),
     onSurfaceVariant = Color(0xFF404943),
+    // M3 Expressive surface container 层级：从最低到最高，替代单一 surfaceVariant
+    surfaceContainerLowest = Color(0xFFEFEFEF),
+    surfaceContainerLow = Color(0xFFE9E9E9),
+    surfaceContainer = Color(0xFFE3E3E3),
+    surfaceContainerHigh = Color(0xFFDEDEDE),
+    surfaceContainerHighest = Color(0xFFD9D9D9),
     outline = Color(0xFF707973),
     outlineVariant = Color(0xFFBFC9C2)
 )
@@ -62,6 +80,12 @@ private val SeedDark = darkColorScheme(
     onSurface = Color(0xFFE1E3DF),
     surfaceVariant = Color(0xFF404943),
     onSurfaceVariant = Color(0xFFBFC9C2),
+    // M3 Expressive surface container 层级
+    surfaceContainerLowest = Color(0xFF0D0F0E),
+    surfaceContainerLow = Color(0xFF191C1A),
+    surfaceContainer = Color(0xFF1D201E),
+    surfaceContainerHigh = Color(0xFF272B28),
+    surfaceContainerHighest = Color(0xFF323633),
     outline = Color(0xFF8A938C),
     outlineVariant = Color(0xFF404943)
 )

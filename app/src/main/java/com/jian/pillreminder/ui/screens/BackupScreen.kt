@@ -88,7 +88,7 @@ fun BackupScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            // ---- 当前状态 ----
+            // 合并到一个卡片：数据概况 + 操作按钮
             Card(
                 shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(
@@ -112,28 +112,8 @@ fun BackupScreen(
                         },
                         highlight = lastBackupDate == null || (daysSinceBackup ?: 0) > 30
                     )
-                }
-            }
 
-            Spacer(Modifier.height(20.dp))
-
-            // 合并到一个卡片，不分"导出"和"导入"两个标题。
-            // 备份和恢复是一件事的正反两面。
-            Card(
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                    Text(
-                        "备份 JSON 格式文件存档，导入可恢复。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(16.dp))
-
+                    Spacer(Modifier.height(20.dp))
                     Button(
                         onClick = onBackup,
                         enabled = !busy,

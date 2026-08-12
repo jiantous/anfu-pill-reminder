@@ -102,7 +102,7 @@ val PillTypography = Typography(
     )
 )
 
-/** M3 Expressive 偏好更大的圆角。 */
+/** M3 Expressive 偏好更大的圆角 + 按钮专属圆角。 */
 val PillShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
@@ -110,3 +110,6 @@ val PillShapes = Shapes(
     large = RoundedCornerShape(28.dp),
     extraLarge = RoundedCornerShape(36.dp)
 )
+
+/** M3 Expressive 按钮圆角：比通用 medium 更圆润，让按钮"浮起来"的感觉更明显。 */
+val ButtonShape = RoundedCornerShape(24.dp)

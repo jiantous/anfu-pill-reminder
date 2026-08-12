@@ -360,7 +360,7 @@ private fun MedicationCard(
         ),
         modifier = Modifier.alpha(if (med.archived) 0.6f else 1f)
     ) {
-        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 14.dp, bottom = 14.dp)) {
+        Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MedBadge(
                     iconIndex = med.iconIndex,

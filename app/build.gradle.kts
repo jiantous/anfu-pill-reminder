@@ -60,8 +60,12 @@ android {
         // 7 = 1.1.5  药箱排序、App 启动闹钟自检、暂停恢复当天提醒；
         //            界面统一（卡片 padding、分组标签圆点）；
         //            删除今日页备份提示横幅
-        versionCode = 7
-        versionName = "1.1.5"
+        // 8 = 1.1.6  Material 3 Expressive 风格；设置页面重构；
+        //            顶栏三点菜单合并为齿轮图标直达设置页；
+        //            备份与关于入口合入设置页；
+        //            UI 统一（卡片 padding、间距、文字样式对齐）
+        versionCode = 8
+        versionName = "1.1.6"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

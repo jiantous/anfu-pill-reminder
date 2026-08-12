@@ -13,7 +13,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,7 +28,6 @@ import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Medication
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Today
@@ -39,8 +37,6 @@ import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -163,8 +159,6 @@ private fun PillApp(relaunchSignal: Int = 0) {
     // 正在编辑的药品 id（null = 新建）。放在 state 里而不是路由参数里，
     // 避免带参路由被 Navigation 恢复导致重开 App 直接落在编辑页。
     var editingId by remember { mutableStateOf<String?>(null) }
-    // 顶栏 ⋮ 菜单的展开状态
-    var menuOpen by remember { mutableStateOf(false) }
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
 
@@ -329,40 +323,8 @@ private fun PillApp(relaunchSignal: Int = 0) {
                         )
                     },
                     actions = {
-                        // 一个 ⋮ 收纳全部次要入口，顶栏不再堆图标
-                        Box {
-                            IconButton(onClick = { menuOpen = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "更多")
-                            }
-                            DropdownMenu(
-                                expanded = menuOpen,
-                                onDismissRequest = { menuOpen = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("设置") },
-                                    leadingIcon = { Icon(Icons.Filled.Settings, null) },
-                                    onClick = {
-                                        menuOpen = false
-                                        nav.navigate(Dest.Settings.route)
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("备份") },
-                                    leadingIcon = { Icon(Icons.Filled.CloudUpload, null) },
-                                    onClick = {
-                                        menuOpen = false
-                                        nav.navigate(Dest.Backup.route)
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("关于") },
-                                    leadingIcon = { Icon(Icons.Filled.Info, null) },
-                                    onClick = {
-                                        menuOpen = false
-                                        nav.navigate(Dest.About.route)
-                                    }
-                                )
-                            }
+                        IconButton(onClick = { nav.navigate(Dest.Settings.route) }) {
+                            Icon(Icons.Filled.Settings, contentDescription = "设置")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -624,6 +586,8 @@ private fun PillApp(relaunchSignal: Int = 0) {
                     },
                     onOpenReminderSetup = { nav.navigate(Dest.Setup.route) },
                     onClearMessage = { settingsMessage = null },
+                    onOpenBackup = { nav.navigate(Dest.Backup.route) },
+                    onOpenAbout = { nav.navigate(Dest.About.route) },
                     onBack = { nav.popBackStack() }
                 )
             }

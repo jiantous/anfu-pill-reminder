@@ -354,7 +354,7 @@ private fun DoseCard(
         Column(
             Modifier
                 .clickable(onClick = onOpen)
-                .padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 10.dp)
+                .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MedBadge(

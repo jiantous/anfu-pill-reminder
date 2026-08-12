@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,7 +65,7 @@ private val RangeOptions = listOf(7 to "近 7 天", 30 to "近 30 天", 90 to "�
 @Composable
 fun HistoryScreen(vm: MedViewModel) {
     val data by vm.data.collectAsState()
-    var rangeIndex by remember { mutableStateOf(0) }
+    var rangeIndex by remember { mutableIntStateOf(0) }
     var month by remember { mutableStateOf(YearMonth.now()) }
     var selectedDay by remember { mutableStateOf<LocalDate?>(null) }
 
@@ -188,7 +189,7 @@ private fun AdherenceCard(stat: ScheduleEngine.Adherence) {
                 Spacer(Modifier.height(12.dp))
                 Text(
                     "这段时间还没有需要服用的记录",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -466,7 +467,7 @@ private fun DayDetailCard(vm: MedViewModel, day: LocalDate) {
                         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(item.medication.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(item.medication.name, style = MaterialTheme.typography.titleMedium)
                             Text(
                                 "${item.time.format()} · ${Reminders.formatDosage(item.medication.dosage)}${item.medication.unit}",
                                 style = MaterialTheme.typography.bodySmall,

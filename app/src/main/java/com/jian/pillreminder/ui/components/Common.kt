@@ -19,16 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bloodtype
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Healing
-import androidx.compose.material.icons.filled.LocalPharmacy
-import androidx.compose.material.icons.filled.Medication
-import androidx.compose.material.icons.filled.MonitorHeart
-import androidx.compose.material.icons.filled.Science
-import androidx.compose.material.icons.filled.Spa
-import androidx.compose.material.icons.filled.Vaccines
-import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -47,17 +39,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Canvas
+import com.jian.pillreminder.ui.theme.ExpressiveSpring
 
 // 药品图标集见 MedIconSet.kt（按剂型分类的手绘矢量）
 
 /** 圆形的药品图标徽标。 */
 @Composable
 fun MedBadge(
+    modifier: Modifier = Modifier,
     iconIndex: Int,
     container: Color,
     content: Color,
-    size: Dp = 48.dp,
-    modifier: Modifier = Modifier
+    size: Dp = 48.dp
 ) {
     Box(
         modifier = modifier
@@ -89,7 +82,7 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** 空状态占位。 */
+/** 空状态占位。M3 Expressive：更大的图标底、更柔和的间距。 */
 @Composable
 fun EmptyState(
     icon: ImageVector,
@@ -98,30 +91,30 @@ fun EmptyState(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(32.dp),
+        modifier = modifier.fillMaxWidth().padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.size(88.dp)
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            modifier = Modifier.size(96.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier.size(44.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
         Text(
             title,
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             subtitle,
             style = MaterialTheme.typography.bodyMedium,
@@ -131,19 +124,19 @@ fun EmptyState(
     }
 }
 
-/** 圆环进度，用于依从率。 */
+/** 圆环进度，用于依从率。M3 Expressive：弹性动画替代线性 tween。 */
 @Composable
 fun ProgressRing(
     progress: Float,
     modifier: Modifier = Modifier,
     strokeWidth: Dp = 12.dp,
-    trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
     color: Color = MaterialTheme.colorScheme.primary,
     center: @Composable () -> Unit = {}
 ) {
     val animated by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = tween(700),
+        animationSpec = ExpressiveSpring,
         label = "ring"
     )
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -179,7 +172,7 @@ fun ProgressRing(
     }
 }
 
-/** 小圆形勾选按钮，用于"已服用"。 */
+/** 小圆形勾选按钮，用于"已服用"。M3 Expressive：弹性缩放反馈。 */
 @Composable
 fun CheckCircle(
     checked: Boolean,
@@ -190,11 +183,19 @@ fun CheckCircle(
 ) {
     val bg by animateColorAsState(
         if (checked) checkedColor else Color.Transparent,
+        animationSpec = tween(300),
         label = "checkBg"
+    )
+    // 弹性缩放：打勾时弹一下，给反馈感
+    val scale by animateFloatAsState(
+        targetValue = if (checked) 1f else 0.85f,
+        animationSpec = ExpressiveSpring,
+        label = "checkScale"
     )
     Box(
         modifier = modifier
             .size(size)
+            .scale(scale)
             .clip(CircleShape)
             .background(bg)
             .then(
@@ -214,14 +215,14 @@ fun CheckCircle(
     }
 }
 
-/** 一行水平柱状图，用于每周依从率。 */
+/** 一行水平柱状图，用于每周依从率。M3 Expressive：圆角顶 + 弹性动画。 */
 @Composable
 fun MiniBarChart(
     values: List<Float>,
     labels: List<String>,
     modifier: Modifier = Modifier,
     barColor: Color = MaterialTheme.colorScheme.primary,
-    trackColor: Color = MaterialTheme.colorScheme.surfaceVariant
+    trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -229,6 +230,11 @@ fun MiniBarChart(
         verticalAlignment = Alignment.Bottom
     ) {
         values.forEachIndexed { i, v ->
+            val animatedH by animateFloatAsState(
+                targetValue = (88 * v.coerceIn(0f, 1f)),
+                animationSpec = ExpressiveSpring,
+                label = "barH"
+            )
             Column(
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -237,18 +243,19 @@ fun MiniBarChart(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(88.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(trackColor),
                     contentAlignment = Alignment.BottomCenter
                 ) {
-                    val h = (88 * v.coerceIn(0f, 1f)).dp
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(if (h < 4.dp && v > 0f) 4.dp else h)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(barColor)
-                    )
+                    if (animatedH > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(if (animatedH < 4f && v > 0f) 4.dp else animatedH.dp)
+                                .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 10.dp, bottomEnd = 10.dp))
+                                .background(barColor)
+                        )
+                    }
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -261,7 +268,7 @@ fun MiniBarChart(
     }
 }
 
-/** 分组标签：圆点 + 文字 + 计数。今日页和药箱页共用。 */
+/** 分组标签：圆点 + 文字 + 计数。今日页和药箱页共用。M3 Expressive：更大的圆点。 */
 @Composable
 fun GroupLabel(
     text: String,
@@ -271,15 +278,15 @@ fun GroupLabel(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.padding(top = 6.dp, start = 4.dp)
+        modifier = modifier.padding(top = 8.dp, start = 4.dp)
     ) {
         Box(
             Modifier
-                .size(8.dp)
+                .size(10.dp)
                 .clip(CircleShape)
                 .background(color)
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(10.dp))
         Text(
             "$text · $count",
             style = MaterialTheme.typography.titleSmall,
