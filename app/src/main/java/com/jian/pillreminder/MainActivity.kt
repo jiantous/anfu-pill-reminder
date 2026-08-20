@@ -50,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,6 +62,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
@@ -309,6 +312,16 @@ private fun PillApp(relaunchSignal: Int = 0) {
         route?.startsWith(Dest.Settings.route) == true ||
         route?.startsWith(Dest.About.route) == true
 
+    // 界面缩放：把 LocalDensity 的 density 乘上 uiScale（档位见设置页）。
+    // 这样所有 dp 布局尺寸和 sp 字号一起按比例放大/缩小（80%~110%）。
+    // fontScale 保留系统原样，所以这里跟系统的"大字模式"是相乘叠加、
+    // 而不是互相覆盖——用户改系统字号时 App 仍正常跟随。
+    val baseDensity = LocalDensity.current
+    val uiDensity = Density(
+        density = baseDensity.density * appData.uiScale,
+        fontScale = baseDensity.fontScale
+    )
+    CompositionLocalProvider(LocalDensity provides uiDensity) {
     Scaffold(
         topBar = {
             if (!isEditing) {
@@ -551,11 +564,13 @@ private fun PillApp(relaunchSignal: Int = 0) {
                 SettingsScreen(
                     snoozeMinutes = appData.snoozeMinutes,
                     ongoingNotification = appData.ongoingNotification,
+                    uiScale = appData.uiScale,
                     logCount = appData.logs.size,
                     busy = backupBusy,
                     message = settingsMessage,
                     onSnoozeMinutesChange = { vm.setSnoozeMinutes(it) },
                     onOngoingNotificationChange = { vm.setOngoingNotification(it) },
+                    onUiScaleChange = { vm.setUiScale(it) },
                     onExportCsv = { days ->
                         pendingCsv = vm.buildCsvContent(days)
                         createCsvLauncher.launch(vm.suggestCsvFileName())
@@ -639,6 +654,7 @@ private fun PillApp(relaunchSignal: Int = 0) {
             }
         }
     }
+    } // CompositionLocalProvider(LocalDensity) — 界面缩放作用域结束
 }
 
 @Composable

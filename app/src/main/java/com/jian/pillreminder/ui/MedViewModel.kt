@@ -183,6 +183,8 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setOngoingNotification(on: Boolean) = repo.setOngoingNotification(on)
 
+    fun setUiScale(scale: Float) = repo.setUiScale(scale)
+
     fun markSetupGuideShown() = repo.markSetupGuideShown()
 
     fun dismissHealthBanner() = repo.setHealthBannerDismissed(true)

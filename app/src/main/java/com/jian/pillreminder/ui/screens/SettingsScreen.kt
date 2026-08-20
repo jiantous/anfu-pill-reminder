@@ -44,8 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.jian.pillreminder.data.SNOOZE_OPTIONS
+import com.jian.pillreminder.data.UI_SCALE_OPTIONS
 
-// 档位表在 data.SNOOZE_OPTIONS，和默认值放在一起，避免两处不同步。
+// 档位表在 data.SNOOZE_OPTIONS / data.UI_SCALE_OPTIONS，和默认值放在一起，避免两处不同步。
 
 /** CSV 导出的时间范围选项。null = 全部历史。 */
 private val CsvRanges: List<Pair<Int?, String>> =
@@ -62,11 +63,13 @@ private val CsvRanges: List<Pair<Int?, String>> =
 fun SettingsScreen(
     snoozeMinutes: Int,
     ongoingNotification: Boolean,
+    uiScale: Float,
     logCount: Int,
     busy: Boolean,
     message: String?,
     onSnoozeMinutesChange: (Int) -> Unit,
     onOngoingNotificationChange: (Boolean) -> Unit,
+    onUiScaleChange: (Float) -> Unit,
     onExportCsv: (Int?) -> Unit,
     onShareCsv: (Int?) -> Unit,
     onOpenReminderSetup: () -> Unit,
@@ -129,6 +132,28 @@ fun SettingsScreen(
                     onClick = onOpenReminderSetup,
                     modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) { Text("检查提醒功能是否正常") }
+            }
+
+            // ---- 界面 ----
+            SettingsSection("界面") {
+                Text(
+                    "缩放整个界面（布局和文字一起）。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    UI_SCALE_OPTIONS.forEach { s ->
+                        FilterChip(
+                            selected = uiScale == s,
+                            onClick = { onUiScaleChange(s) },
+                            label = { Text("${(s * 100).toInt()}%") }
+                        )
+                    }
+                }
             }
 
             // ---- 数据 ----

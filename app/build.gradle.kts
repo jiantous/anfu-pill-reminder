@@ -64,8 +64,9 @@ android {
         //            顶栏三点菜单合并为齿轮图标直达设置页；
         //            备份与关于入口合入设置页；
         //            UI 统一（卡片 padding、间距、文字样式对齐）
-        versionCode = 8
-        versionName = "1.1.6"
+        // 9 = 1.1.7  设置页新增「界面」分组：整体界面缩放 80%/90%/100%/110%
+        versionCode = 9
+        versionName = "1.1.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

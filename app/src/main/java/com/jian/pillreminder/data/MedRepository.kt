@@ -269,6 +269,9 @@ class MedRepository private constructor(private val file: File) {
 
     fun setOngoingNotification(on: Boolean) = update { it.copy(ongoingNotification = on) }
 
+    /** 设置界面缩放比例（0.8f–1.1f，见 [UI_SCALE_OPTIONS]）。 */
+    fun setUiScale(scale: Float) = update { it.copy(uiScale = scale) }
+
     // ---- 暂停用药 ----
 
     /** [until] 为 null 表示立即恢复。 */

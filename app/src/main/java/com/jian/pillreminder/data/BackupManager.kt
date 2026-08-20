@@ -32,7 +32,12 @@ data class BackupFile(
      * 常驻通知开关。有默认值，所以旧备份缺这个字段照样能读，
      * 读出来就是默认开启，不用升 version。
      */
-    val ongoingNotification: Boolean = true
+    val ongoingNotification: Boolean = true,
+    /**
+     * 界面缩放比例（1.0=100%）。有默认值，旧备份缺这个字段照样能读，
+     * 读出来就是默认 100%，不用升 version。（理由同 ongoingNotification。）
+     */
+    val uiScale: Float = DEFAULT_UI_SCALE
 ) {
     companion object {
         /**
@@ -82,7 +87,8 @@ object BackupManager {
             medications = data.medications,
             logs = data.logs,
             snoozeMinutes = data.snoozeMinutes,
-            ongoingNotification = data.ongoingNotification
+            ongoingNotification = data.ongoingNotification,
+            uiScale = data.uiScale
         )
         return json.encodeToString(backup)
     }
@@ -150,6 +156,7 @@ object BackupManager {
             logs = backup.logs,
             snoozeMinutes = backup.snoozeMinutes,
             ongoingNotification = backup.ongoingNotification,
+            uiScale = backup.uiScale,
             doseOverrides = emptyList(),
             deferredReminders = emptyList()
         )
@@ -178,6 +185,7 @@ object BackupManager {
                 logs = logsByKey.values.filter { it.medicationId in validIds },
                 snoozeMinutes = backup.snoozeMinutes,
                 ongoingNotification = backup.ongoingNotification,
+                uiScale = backup.uiScale,
                 doseOverrides = current.doseOverrides.filter { it.medicationId in validIds },
                 deferredReminders = current.deferredReminders.filter { it.medicationId in validIds }
             )

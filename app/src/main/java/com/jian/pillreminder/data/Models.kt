@@ -165,6 +165,17 @@ val SNOOZE_OPTIONS = listOf(5, 15, 30, 60)
 /** 默认延后档位。 */
 const val DEFAULT_SNOOZE_MINUTES = 15
 
+/**
+ * 界面缩放可选的档位（百分比）。
+ *
+ * 和默认值放一起，因为 [DEFAULT_UI_SCALE] 必须是这个表的成员——
+ * 不是的话设置页会一个档位都不高亮。（理由同 [SNOOZE_OPTIONS]。）
+ */
+val UI_SCALE_OPTIONS = listOf(0.8f, 0.9f, 1.0f, 1.1f)
+
+/** 默认界面缩放比例（100%）。 */
+const val DEFAULT_UI_SCALE = 1.0f
+
 /** 整个 App 的持久化状态。 */
 @Serializable
 data class AppData(
@@ -192,6 +203,13 @@ data class AppData(
      * 漏服的主因就是提醒响过一次就没了。默认开启，可在设置里关掉。
      */
     val ongoingNotification: Boolean = true,
+    /**
+     * 界面缩放比例。取值来自 [UI_SCALE_OPTIONS]。
+     *
+     * 1.0f = 100% 系统默认；0.8/0.9/1.1 分别对应 80%/90%/110%，整体放大缩小
+     * 界面（布局尺寸和文字一起，见 MainActivity 里的 Density.scale）。
+     */
+    val uiScale: Float = 1.0f,
     /** 是否已经走过首次的「提醒设置」引导。 */
     val setupGuideShown: Boolean = false,
     /** 用户选择了不再提示提醒相关的系统设置。 */
