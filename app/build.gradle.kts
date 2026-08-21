@@ -65,8 +65,10 @@ android {
         //            备份与关于入口合入设置页；
         //            UI 统一（卡片 padding、间距、文字样式对齐）
         // 9 = 1.1.7  设置页新增「界面」分组：整体界面缩放 80%/90%/100%/110%
-        versionCode = 9
-        versionName = "1.1.7"
+        // 10 = 1.1.8 底部 Tab 切换时清空返回栈：根 tab（今天/药箱/统计）返回手势即退出，
+        //             深层页（设置/关于/编辑）返回逐级回退，不再跨 tab 往复盘 N 页
+        versionCode = 10
+        versionName = "1.1.8"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

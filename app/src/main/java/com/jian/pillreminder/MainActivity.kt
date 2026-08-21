@@ -351,7 +351,17 @@ private fun PillApp(relaunchSignal: Int = 0) {
                 NavigationBar {
                     NavigationBarItem(
                         selected = route == Dest.Today.route,
-                        onClick = { nav.navigate(Dest.Today.route) { launchSingleTop = true } },
+                        onClick = {
+                            nav.navigate(Dest.Today.route) {
+                                // 三个一级 tab 互不堆叠：切 tab 前把当前栈弹回起始页并存档，
+                                // 切过去时恢复该 tab 自己的状态——根 tab 永远在返回栈底。
+                                // 这样系统返回手势在任一根 tab 上就是退出 App，
+                                // 不会再层层往回翻之前来回切的那些页面。
+                                popUpTo(Dest.Today.route) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
                         icon = {
                             Icon(
                                 if (route == Dest.Today.route) Icons.Filled.Today
@@ -363,7 +373,13 @@ private fun PillApp(relaunchSignal: Int = 0) {
                     )
                     NavigationBarItem(
                         selected = route == Dest.Meds.route,
-                        onClick = { nav.navigate(Dest.Meds.route) { launchSingleTop = true } },
+                        onClick = {
+                            nav.navigate(Dest.Meds.route) {
+                                popUpTo(Dest.Today.route) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
                         icon = {
                             Icon(
                                 if (route == Dest.Meds.route) Icons.Filled.Medication
@@ -375,7 +391,13 @@ private fun PillApp(relaunchSignal: Int = 0) {
                     )
                     NavigationBarItem(
                         selected = route == Dest.History.route,
-                        onClick = { nav.navigate(Dest.History.route) { launchSingleTop = true } },
+                        onClick = {
+                            nav.navigate(Dest.History.route) {
+                                popUpTo(Dest.Today.route) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
                         icon = {
                             Icon(
                                 if (route == Dest.History.route) Icons.Filled.Insights
