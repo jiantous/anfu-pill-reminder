@@ -40,7 +40,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.jian.pillreminder"
+        applicationId = "com.nxwzj0.pillreminder"
         minSdk = 24
         targetSdk = 37
         // versionCode 每次对外发布都必须 +1，否则用户装不上——Android 会拒绝
