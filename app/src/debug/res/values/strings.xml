@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- 只在 debug 包生效，盖掉 main 里的 app_name，桌面图标好区分正式版/测试版 -->
-    <string name="app_name">安服 Debug</string>
-</resources>
