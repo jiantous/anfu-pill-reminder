@@ -67,8 +67,11 @@ android {
         // 9 = 1.1.7  设置页新增「界面」分组：整体界面缩放 80%/90%/100%/110%
         // 10 = 1.1.8 底部 Tab 切换时清空返回栈：根 tab（今天/药箱/统计）返回手势即退出，
         //             深层页（设置/关于/编辑）返回逐级回退，不再跨 tab 往复盘 N 页
-        versionCode = 10
-        versionName = "1.1.8"
+        // 11 = 1.1.9 新增「按小时间隔」服药时间：填开始/结束时间和间隔小时数自动生成
+        //            当天时刻表，打卡晚了下一次自动顺延，次日重新对齐开始时间；
+        //            包名改为 com.nxwzj0.pillreminder，独立维护分支
+        versionCode = 11
+        versionName = "1.1.9"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
