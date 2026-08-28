@@ -92,6 +92,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // applicationId 加后缀，能跟手机上已装的正式版（不同签名）并存，
+            // 测试包不会跟正式数据打架，也不会因为签名不一致而装不上/覆盖失败。
+            // 应用名在 src/debug/res 里覆盖成"安服 Debug"，桌面上一眼能分清哪个是测试包。
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             // 代码压缩+混淆：包更小、也顺带增加逆向难度。
             // 需要保留 kotlinx.serialization 的序列化器，规则已写在 proguard-rules.pro。

@@ -102,8 +102,10 @@ class ReminderReceiver : BroadcastReceiver() {
             }
 
             Reminders.ACTION_TAKEN -> {
-                repo.logDose(medId, date, time, DoseStatus.TAKEN, System.currentTimeMillis(), syncWrite = true)
+                val now = System.currentTimeMillis()
+                repo.logDose(medId, date, time, DoseStatus.TAKEN, now, syncWrite = true)
                 Reminders.clearDoseOutcome(context, medId, date, time)
+                Reminders.applyCascadeAfterTaken(context, med, date, time, now)
                 checkStock(context, medId)
             }
 

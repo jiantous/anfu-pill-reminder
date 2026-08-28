@@ -22,6 +22,17 @@ sealed interface Schedule {
     data class CycleOnOff(val onDays: Int, val offDays: Int) : Schedule
 }
 
+/**
+ * 按小时间隔自动生成一天内的服药时刻表：从 [startTime] 起每隔 [intervalHours] 小时一次，
+ * 直到 [endTime] 为止（含）。不跨夜——超过 [endTime] 就不再生成，次日从 [startTime] 重新开始。
+ */
+@Serializable
+data class IntervalDosing(
+    val startTime: TimeOfDay,
+    val endTime: TimeOfDay,
+    val intervalHours: Int
+)
+
 /** 与进餐的关系，仅作提示文案。 */
 enum class MealRelation(val label: String) {
     NONE("无要求"),
@@ -84,7 +95,13 @@ data class Medication(
      * 不计入依从率。刻意**不顺延疗程**——endDate 和周期锚点都不动，
      * 恢复后接着原计划走，这样历史统计才解释得通。
      */
-    val pausedUntil: String? = null
+    val pausedUntil: String? = null,
+    /**
+     * 非 null 时，[times] 由这份配置按小时间隔自动生成（见 ScheduleEngine.intervalGridTimes），
+     * 而不是用户手动逐个添加的。保存这份配置本身是为了重新编辑时能回显开始/结束时间和间隔，
+     * 单看生成后的 [times] 无法反推出这三个数字。
+     */
+    val intervalDosing: IntervalDosing? = null
 )
 
 /**
@@ -126,11 +143,23 @@ data class DoseOverride(
     /** 原定时刻，这次服药的身份键。 */
     val originalTime: TimeOfDay,
     /** 实际要提醒的时刻。 */
-    val newTime: TimeOfDay
+    val newTime: TimeOfDay,
+    /**
+     * 这次挪动是用户手动挪的，还是按间隔用药规则自动级联出来的。
+     *
+     * 区分开是因为二者优先级不同：自动级联撞见用户已经手动挪过的这一次时要让路
+     * （用户的主动选择），但可以覆盖上一轮级联自己留下的挪动。老数据里的 override
+     * 全部来自"手动改时间"功能，默认 MANUAL 对它们语义上就是对的。
+     */
+    val source: OverrideSource = OverrideSource.MANUAL
 ) {
     /** 与 DoseLog.key 同构，便于两边对照。 */
     val key: String get() = "$medicationId|$date|${originalTime.format()}"
 }
+
+/** [DoseOverride.source] 的取值。 */
+@Serializable
+enum class OverrideSource { MANUAL, CASCADE }
 
 /** 一次服药的状态。 */
 enum class DoseStatus { PENDING, TAKEN, SKIPPED }

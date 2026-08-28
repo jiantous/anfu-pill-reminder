@@ -21,6 +21,7 @@ import com.jian.pillreminder.R
 import com.jian.pillreminder.data.DeferredReminder
 import com.jian.pillreminder.data.MedRepository
 import com.jian.pillreminder.data.Medication
+import com.jian.pillreminder.data.OverrideSource
 import com.jian.pillreminder.data.TimeOfDay
 import com.jian.pillreminder.domain.ScheduleEngine
 import java.time.LocalDateTime
@@ -298,7 +299,8 @@ object Reminders {
         med: Medication,
         time: TimeOfDay,
         date: String,
-        newTime: TimeOfDay
+        newTime: TimeOfDay,
+        source: OverrideSource = OverrideSource.MANUAL
     ) {
         val triggerAt = ScheduleEngine.toEpochMillis(
             LocalDateTime.of(
@@ -308,9 +310,34 @@ object Reminders {
             )
         )
         val repo = MedRepository.get(context)
-        repo.setDoseOverride(med.id, date, time, newTime)
+        repo.setDoseOverride(med.id, date, time, newTime, source)
         repo.putDeferredReminder(DeferredReminder(med.id, date, time, triggerAt))
         armDeferred(context, med, time, date, triggerAt)
+    }
+
+    /**
+     * 按间隔用药的药打卡"已服用"后，级联顺延紧邻的下一次（如需要）。
+     *
+     * 只对 [Medication.intervalDosing] 非空的药生效，具体规则见
+     * [ScheduleEngine.cascadeAfterTaken]。两个打卡入口（App 内点击 / 通知栏按钮）
+     * 都调用这一处，避免同一段逻辑写两遍走岔——[clearDoseOutcome] 就是这么被拆出来的。
+     */
+    fun applyCascadeAfterTaken(
+        context: Context,
+        med: Medication,
+        date: String,
+        takenTime: TimeOfDay,
+        takenAtMillis: Long
+    ) {
+        val localDate = runCatching { java.time.LocalDate.parse(date) }.getOrNull() ?: return
+        val d = MedRepository.get(context).data.value
+        val override = ScheduleEngine.cascadeAfterTaken(
+            med, localDate, takenTime, takenAtMillis, d.logs, d.doseOverrides
+        ) ?: return
+        rescheduleOneDose(
+            context, med, override.originalTime, date, override.newTime,
+            source = OverrideSource.CASCADE
+        )
     }
 
     /** 撤销临时改时间，回到原定时刻。 */

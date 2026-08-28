@@ -291,14 +291,15 @@ class MedRepository private constructor(private val file: File) {
         medicationId: String,
         date: String,
         originalTime: TimeOfDay,
-        newTime: TimeOfDay?
+        newTime: TimeOfDay?,
+        source: OverrideSource = OverrideSource.MANUAL
     ) = update { d ->
         val rest = d.doseOverrides.filterNot {
             it.medicationId == medicationId && it.date == date && it.originalTime == originalTime
         }
         d.copy(
             doseOverrides = if (newTime == null) rest
-            else rest + DoseOverride(medicationId, date, originalTime, newTime)
+            else rest + DoseOverride(medicationId, date, originalTime, newTime, source)
         )
     }
 

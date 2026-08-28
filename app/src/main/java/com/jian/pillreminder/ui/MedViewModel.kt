@@ -76,9 +76,13 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
     )
 
     fun saveMedication(med: Medication) {
+        // intervalDosing 非空时 times 一律现算，不信任传进来的值——
+        // 避免这两个字段以后在别的路径（比如恢复备份）走岔而对不上。
+        val times = med.intervalDosing?.let { ScheduleEngine.intervalGridTimes(it) }
+            ?: med.times.distinct().sorted().ifEmpty { listOf(TimeOfDay(8, 0)) }
         val normalized = med.copy(
             name = med.name.trim(),
-            times = med.times.distinct().sorted().ifEmpty { listOf(TimeOfDay(8, 0)) },
+            times = times,
             // 用户动手改过并保存 → 说明他要真用这条，转为正式药品。
             // 不清这个标记的话，这条药会一直不排闹钟、永远不提醒。
             isSample = false
@@ -127,12 +131,13 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun mark(item: DoseItem, status: DoseStatus) {
+        val nowMillis = System.currentTimeMillis()
         repo.logDose(
             medicationId = item.medication.id,
             date = item.date.toString(),
             time = item.time,
             status = status,
-            nowMillis = System.currentTimeMillis()
+            nowMillis = nowMillis
         )
         // 这次服药已经有结果了，未触发的延后闹钟（稍后提醒/临时改时间）都作废。
         // 用 clearDoseOutcome 而不是在这里各写一遍：之前就是因为这段清理在
@@ -143,6 +148,10 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
         )
 
         if (status == DoseStatus.TAKEN) {
+            // 按间隔用药的药：紧邻的下一次跟着这次的实际打卡时间顺延
+            Reminders.applyCascadeAfterTaken(
+                getApplication(), item.medication, item.date.toString(), item.time, nowMillis
+            )
             val updated = repo.data.value.medications.firstOrNull { it.id == item.medication.id }
             val remaining = updated?.stockRemaining
             if (updated != null && remaining != null && remaining <= updated.stockThreshold) {

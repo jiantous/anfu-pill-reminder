@@ -3,9 +3,12 @@ package com.jian.pillreminder.domain
 import com.jian.pillreminder.data.DoseLog
 import com.jian.pillreminder.data.DoseOverride
 import com.jian.pillreminder.data.DoseStatus
+import com.jian.pillreminder.data.IntervalDosing
 import com.jian.pillreminder.data.Medication
+import com.jian.pillreminder.data.OverrideSource
 import com.jian.pillreminder.data.Schedule
 import com.jian.pillreminder.data.TimeOfDay
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -162,6 +165,75 @@ object ScheduleEngine {
 
     fun toEpochMillis(dt: LocalDateTime): Long =
         dt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    /**
+     * 按 [config] 生成一天内的服药时刻表：[IntervalDosing.startTime] 起，
+     * 每隔 [IntervalDosing.intervalHours] 小时一次，直到 [IntervalDosing.endTime]（含）为止。
+     *
+     * 结束不晚于开始是非法配置——正常情况下 UI 会挡住，这里防御性地退化成只在
+     * 开始时刻提醒一次，而不是返回空列表（Medication.times 不允许为空）。
+     */
+    fun intervalGridTimes(config: IntervalDosing): List<TimeOfDay> {
+        val startMin = config.startTime.minutesOfDay
+        val endMin = config.endTime.minutesOfDay
+        if (endMin <= startMin) return listOf(config.startTime)
+
+        val stepMinutes = config.intervalHours.coerceAtLeast(1) * 60
+        val out = mutableListOf<TimeOfDay>()
+        var m = startMin
+        while (m <= endMin) {
+            out += TimeOfDay(m / 60, m % 60)
+            m += stepMinutes
+        }
+        return out
+    }
+
+    /**
+     * 按间隔用药的药打卡"已服用"后，算出紧邻的下一次要不要跟着顺延，顺延到哪。
+     *
+     * 只顺延**紧邻的下一个**未处理时刻，不会跳过它去动更后面的——这正是"跳过不顺延"
+     * 的实现方式：下一个时刻一旦已经是 TAKEN/SKIPPED，级联到这里就停了。
+     *
+     * 只对开启了 [Medication.intervalDosing] 的药生效，普通固定时间的药不受影响。
+     *
+     * @return 需要新增/覆盖的 override；不需要顺延时返回 null。
+     */
+    fun cascadeAfterTaken(
+        med: Medication,
+        date: LocalDate,
+        takenTime: TimeOfDay,
+        takenAtMillis: Long,
+        logs: List<DoseLog>,
+        overrides: List<DoseOverride>
+    ): DoseOverride? {
+        val config = med.intervalDosing ?: return null
+
+        val sorted = med.times.sorted()
+        val idx = sorted.indexOf(takenTime)
+        if (idx < 0 || idx == sorted.lastIndex) return null
+        val nextSlot = sorted[idx + 1]
+
+        val dateStr = date.toString()
+        val nextStatus = logs.firstOrNull {
+            it.medicationId == med.id && it.date == dateStr && it.time == nextSlot
+        }?.status ?: DoseStatus.PENDING
+        if (nextStatus != DoseStatus.PENDING) return null
+
+        val existing = overrides.firstOrNull {
+            it.medicationId == med.id && it.date == dateStr && it.originalTime == nextSlot
+        }
+        if (existing != null && existing.source == OverrideSource.MANUAL) return null
+
+        val actual = LocalDateTime.ofInstant(Instant.ofEpochMilli(takenAtMillis), ZoneId.systemDefault())
+        val candidate = actual.plusHours(config.intervalHours.toLong())
+        if (candidate.toLocalDate() != date) return null
+
+        val candidateTime = TimeOfDay(candidate.hour, candidate.minute)
+        if (candidateTime.minutesOfDay > config.endTime.minutesOfDay) return null
+        if (candidateTime == nextSlot) return null
+
+        return DoseOverride(med.id, dateStr, nextSlot, candidateTime, OverrideSource.CASCADE)
+    }
 
     /** 依从率统计结果。 */
     data class Adherence(

@@ -63,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.jian.pillreminder.data.IntervalDosing
 import com.jian.pillreminder.data.MealRelation
 import com.jian.pillreminder.data.Medication
 import com.jian.pillreminder.data.Schedule
@@ -81,6 +82,14 @@ import java.time.format.DateTimeFormatter
 private enum class FreqTab(val label: String) {
     DAILY("每天"), WEEKLY("按周"), INTERVAL("间隔"), CYCLE("周期")
 }
+
+/** 服药时间怎么定：手动逐个加，还是按小时间隔自动生成一天的时刻表。 */
+private enum class TimeMode(val label: String) {
+    MANUAL("手动"), INTERVAL("按小时间隔")
+}
+
+/** 按间隔模式里正在填开始还是结束时间。 */
+private enum class IntervalField { START, END }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,6 +136,20 @@ fun EditMedicationScreen(
     var cycleOff by remember {
         mutableStateOf(((initial.schedule as? Schedule.CycleOnOff)?.offDays ?: 7).toString())
     }
+    var timeMode by remember {
+        mutableStateOf(if (initial.intervalDosing != null) TimeMode.INTERVAL else TimeMode.MANUAL)
+    }
+    var intervalStart by remember {
+        mutableStateOf(initial.intervalDosing?.startTime ?: TimeOfDay(8, 0))
+    }
+    var intervalEnd by remember {
+        mutableStateOf(initial.intervalDosing?.endTime ?: TimeOfDay(20, 0))
+    }
+    var intervalHoursText by remember {
+        mutableStateOf((initial.intervalDosing?.intervalHours ?: 2).toString())
+    }
+    var editingIntervalField by remember { mutableStateOf<IntervalField?>(null) }
+    var intervalTimeError by remember { mutableStateOf(false) }
     var dosageText by remember {
         mutableStateOf(com.jian.pillreminder.notify.Reminders.formatDosage(initial.dosage))
     }
@@ -154,11 +177,22 @@ fun EditMedicationScreen(
         )
     }
 
+    fun buildIntervalConfig() = IntervalDosing(
+        startTime = intervalStart,
+        endTime = intervalEnd,
+        intervalHours = (intervalHoursText.toIntOrNull() ?: 2).coerceIn(1, 24)
+    )
+
     fun commit() {
         if (draft.name.isBlank()) {
             nameError = true
             return
         }
+        if (timeMode == TimeMode.INTERVAL && intervalEnd.minutesOfDay <= intervalStart.minutesOfDay) {
+            intervalTimeError = true
+            return
+        }
+        val intervalConfig = if (timeMode == TimeMode.INTERVAL) buildIntervalConfig() else null
         onSave(
             draft.copy(
                 dosage = dosageText.toDoubleOrNull()?.coerceAtLeast(0.0) ?: 1.0,
@@ -166,7 +200,9 @@ fun EditMedicationScreen(
                 startDate = startDateText,
                 endDate = if (hasEndDate) endDateText else null,
                 stockRemaining = stockText.toDoubleOrNull(),
-                stockThreshold = thresholdText.toDoubleOrNull() ?: 5.0
+                stockThreshold = thresholdText.toDoubleOrNull() ?: 5.0,
+                times = intervalConfig?.let { ScheduleEngine.intervalGridTimes(it) } ?: draft.times,
+                intervalDosing = intervalConfig
             )
         )
     }
@@ -306,47 +342,124 @@ fun EditMedicationScreen(
 
             // ---- 服药时间 ----
             SettingCard("服药时间") {
-                Text(
-                    "可以加多个时间点，比如早晚各一次",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(12.dp))
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    draft.times.sorted().forEachIndexed { index, t ->
-                        InputChip(
-                            selected = false,
-                            onClick = {
-                                editingTimeIndex = draft.times.indexOf(t)
-                                showTimePicker = true
-                            },
-                            label = { Text(t.format()) },
-                            leadingIcon = {
-                                Icon(Icons.Filled.Schedule, null, Modifier.size(18.dp))
-                            },
-                            trailingIcon = {
-                                Icon(
-                                    Icons.Filled.Close,
-                                    contentDescription = "删除该时间",
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .clickable {
-                                            if (draft.times.size > 1) {
-                                                draft = draft.copy(times = draft.times - t)
-                                            }
-                                        }
-                                )
-                            }
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    TimeMode.entries.forEachIndexed { index, mode ->
+                        SegmentedButton(
+                            selected = timeMode == mode,
+                            onClick = { timeMode = mode },
+                            shape = SegmentedButtonDefaults.itemShape(index, TimeMode.entries.size),
+                            label = { Text(mode.label, style = MaterialTheme.typography.labelMedium) }
                         )
                     }
-                    AssistChip(
-                        onClick = { editingTimeIndex = null; showTimePicker = true },
-                        label = { Text("加时间") },
-                        leadingIcon = { Icon(Icons.Filled.Add, null, Modifier.size(18.dp)) }
-                    )
+                }
+                Spacer(Modifier.height(14.dp))
+
+                when (timeMode) {
+                    TimeMode.MANUAL -> {
+                        Text(
+                            "可以加多个时间点，比如早晚各一次",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        androidx.compose.foundation.layout.FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            draft.times.sorted().forEachIndexed { index, t ->
+                                InputChip(
+                                    selected = false,
+                                    onClick = {
+                                        editingTimeIndex = draft.times.indexOf(t)
+                                        showTimePicker = true
+                                    },
+                                    label = { Text(t.format()) },
+                                    leadingIcon = {
+                                        Icon(Icons.Filled.Schedule, null, Modifier.size(18.dp))
+                                    },
+                                    trailingIcon = {
+                                        Icon(
+                                            Icons.Filled.Close,
+                                            contentDescription = "删除该时间",
+                                            modifier = Modifier
+                                                .size(18.dp)
+                                                .clickable {
+                                                    if (draft.times.size > 1) {
+                                                        draft = draft.copy(times = draft.times - t)
+                                                    }
+                                                }
+                                        )
+                                    }
+                                )
+                            }
+                            AssistChip(
+                                onClick = { editingTimeIndex = null; showTimePicker = true },
+                                label = { Text("加时间") },
+                                leadingIcon = { Icon(Icons.Filled.Add, null, Modifier.size(18.dp)) }
+                            )
+                        }
+                    }
+
+                    TimeMode.INTERVAL -> {
+                        Text(
+                            "按开始/结束时间和间隔小时数自动生成当天要提醒的时刻，不跨夜。" +
+                                "打卡晚了，下一次会自动顺延；次日仍从开始时间重新排。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            AssistChip(
+                                onClick = { editingIntervalField = IntervalField.START },
+                                label = { Text("开始 ${intervalStart.format()}") },
+                                leadingIcon = { Icon(Icons.Filled.Schedule, null, Modifier.size(18.dp)) }
+                            )
+                            AssistChip(
+                                onClick = { editingIntervalField = IntervalField.END },
+                                label = { Text("结束 ${intervalEnd.format()}") },
+                                leadingIcon = { Icon(Icons.Filled.Schedule, null, Modifier.size(18.dp)) }
+                            )
+                        }
+                        if (intervalTimeError) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "结束时间必须晚于开始时间",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("每隔", style = MaterialTheme.typography.bodyLarge)
+                            Spacer(Modifier.width(10.dp))
+                            OutlinedTextField(
+                                value = intervalHoursText,
+                                onValueChange = {
+                                    intervalHoursText = it.filter { c -> c.isDigit() }.take(2)
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                modifier = Modifier.width(90.dp)
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("小时提醒一次", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        val previewTimes = remember(intervalStart, intervalEnd, intervalHoursText) {
+                            ScheduleEngine.intervalGridTimes(
+                                IntervalDosing(
+                                    intervalStart,
+                                    intervalEnd,
+                                    (intervalHoursText.toIntOrNull() ?: 2).coerceIn(1, 24)
+                                )
+                            )
+                        }
+                        Text(
+                            "今天将在 ${previewTimes.joinToString("、") { it.format() }} 提醒，共 ${previewTimes.size} 次",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -653,6 +766,21 @@ fun EditMedicationScreen(
                 }
                 showTimePicker = false
                 editingTimeIndex = null
+            }
+        )
+    }
+
+    editingIntervalField?.let { field ->
+        val current = if (field == IntervalField.START) intervalStart else intervalEnd
+        TimePickerDialog(
+            initialHour = current.hour,
+            initialMinute = current.minute,
+            onDismiss = { editingIntervalField = null },
+            onConfirm = { h, m ->
+                val t = TimeOfDay(h, m)
+                if (field == IntervalField.START) intervalStart = t else intervalEnd = t
+                intervalTimeError = false
+                editingIntervalField = null
             }
         )
     }

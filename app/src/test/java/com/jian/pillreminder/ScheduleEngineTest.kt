@@ -3,6 +3,7 @@ package com.jian.pillreminder
 import com.jian.pillreminder.data.DoseLog
 import com.jian.pillreminder.data.DoseOverride
 import com.jian.pillreminder.data.DoseStatus
+import com.jian.pillreminder.data.IntervalDosing
 import com.jian.pillreminder.data.Medication
 import com.jian.pillreminder.data.Schedule
 import com.jian.pillreminder.data.TimeOfDay
@@ -250,5 +251,51 @@ class ScheduleEngineTest {
         // 原定 8:00 已过，但挪到了 21:00，此刻 12:00 还没到
         assertFalse("挪到晚上就不该算错过", item.isOverdue(LocalDateTime.parse("2026-01-05T12:00:00")))
         assertTrue(item.isOverdue(LocalDateTime.parse("2026-01-05T22:00:00")))
+    }
+
+    // ---- 按小时间隔生成时刻表 ----
+
+    @Test
+    fun `间隔能整除窗口时含首尾两端`() {
+        val times = ScheduleEngine.intervalGridTimes(
+            IntervalDosing(TimeOfDay(8, 0), TimeOfDay(20, 0), intervalHours = 2)
+        )
+        assertEquals(
+            listOf(8, 10, 12, 14, 16, 18, 20).map { TimeOfDay(it, 0) },
+            times
+        )
+    }
+
+    @Test
+    fun `间隔不能整除窗口时最后一次不超过结束时间`() {
+        val times = ScheduleEngine.intervalGridTimes(
+            IntervalDosing(TimeOfDay(9, 0), TimeOfDay(21, 0), intervalHours = 3)
+        )
+        // 9,12,15,18,21 —— 下一个 24:00 已经超过 21:00，不生成
+        assertEquals(listOf(9, 12, 15, 18, 21).map { TimeOfDay(it, 0) }, times)
+    }
+
+    @Test
+    fun `窗口比间隔短只生成开始时刻一次`() {
+        val times = ScheduleEngine.intervalGridTimes(
+            IntervalDosing(TimeOfDay(8, 0), TimeOfDay(9, 0), intervalHours = 2)
+        )
+        assertEquals(listOf(TimeOfDay(8, 0)), times)
+    }
+
+    @Test
+    fun `结束时间等于开始时间时退化成一次`() {
+        val times = ScheduleEngine.intervalGridTimes(
+            IntervalDosing(TimeOfDay(8, 0), TimeOfDay(8, 0), intervalHours = 2)
+        )
+        assertEquals(listOf(TimeOfDay(8, 0)), times)
+    }
+
+    @Test
+    fun `结束时间早于开始时间时防御性退化成一次`() {
+        val times = ScheduleEngine.intervalGridTimes(
+            IntervalDosing(TimeOfDay(20, 0), TimeOfDay(8, 0), intervalHours = 2)
+        )
+        assertEquals(listOf(TimeOfDay(20, 0)), times)
     }
 }
