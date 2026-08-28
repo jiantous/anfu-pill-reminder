@@ -194,7 +194,8 @@ object ScheduleEngine {
      * 只顺延**紧邻的下一个**未处理时刻，不会跳过它去动更后面的——这正是"跳过不顺延"
      * 的实现方式：下一个时刻一旦已经是 TAKEN/SKIPPED，级联到这里就停了。
      *
-     * 只对开启了 [Medication.intervalDosing] 的药生效，普通固定时间的药不受影响。
+     * 只对开启了 [Medication.intervalDosing] 且 [IntervalDosing.cascadeEnabled] 为真的药生效，
+     * 普通固定时间的药、以及关掉这个开关的间隔用药都不受影响。
      *
      * @return 需要新增/覆盖的 override；不需要顺延时返回 null。
      */
@@ -206,7 +207,7 @@ object ScheduleEngine {
         logs: List<DoseLog>,
         overrides: List<DoseOverride>
     ): DoseOverride? {
-        val config = med.intervalDosing ?: return null
+        val config = med.intervalDosing?.takeIf { it.cascadeEnabled } ?: return null
 
         val sorted = med.times.sorted()
         val idx = sorted.indexOf(takenTime)

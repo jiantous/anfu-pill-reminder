@@ -150,6 +150,9 @@ fun EditMedicationScreen(
     }
     var editingIntervalField by remember { mutableStateOf<IntervalField?>(null) }
     var intervalTimeError by remember { mutableStateOf(false) }
+    var intervalCascadeEnabled by remember {
+        mutableStateOf(initial.intervalDosing?.cascadeEnabled ?: true)
+    }
     var dosageText by remember {
         mutableStateOf(com.jian.pillreminder.notify.Reminders.formatDosage(initial.dosage))
     }
@@ -180,7 +183,8 @@ fun EditMedicationScreen(
     fun buildIntervalConfig() = IntervalDosing(
         startTime = intervalStart,
         endTime = intervalEnd,
-        intervalHours = (intervalHoursText.toIntOrNull() ?: 2).coerceIn(1, 24)
+        intervalHours = (intervalHoursText.toIntOrNull() ?: 2).coerceIn(1, 24),
+        cascadeEnabled = intervalCascadeEnabled
     )
 
     fun commit() {
@@ -458,6 +462,26 @@ fun EditMedicationScreen(
                             "今天将在 ${previewTimes.joinToString("、") { it.format() }} 提醒，共 ${previewTimes.size} 次",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        ListItem(
+                            headlineContent = { Text("打卡晚了自动顺延下一次") },
+                            supportingContent = {
+                                Text(
+                                    if (intervalCascadeEnabled)
+                                        "紧邻的下一次会跟着这次实际打卡的时间顺延；跳过不顺延；次日重新从开始时间排"
+                                    else "关掉后，不管几点打卡，后面的时刻都按上面的时刻表走，不跟着挪"
+                                )
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = intervalCascadeEnabled,
+                                    onCheckedChange = { intervalCascadeEnabled = it }
+                                )
+                            },
+                            colors = androidx.compose.material3.ListItemDefaults.colors(
+                                containerColor = androidx.compose.ui.graphics.Color.Transparent
+                            )
                         )
                     }
                 }

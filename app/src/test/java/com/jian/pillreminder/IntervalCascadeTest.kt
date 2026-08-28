@@ -51,6 +51,15 @@ class IntervalCascadeTest {
     }
 
     @Test
+    fun `关闭顺延开关后即使晚点打卡也不顺延`() {
+        val m = med(intervalDosing = IntervalDosing(TimeOfDay(9, 0), TimeOfDay(21, 0), 2, cascadeEnabled = false))
+        val result = ScheduleEngine.cascadeAfterTaken(
+            m, date, TimeOfDay(9, 0), millisAt(9, 30), emptyList(), emptyList()
+        )
+        assertNull(result)
+    }
+
+    @Test
     fun `准点打卡不生成顺延`() {
         val m = med()
         val result = ScheduleEngine.cascadeAfterTaken(

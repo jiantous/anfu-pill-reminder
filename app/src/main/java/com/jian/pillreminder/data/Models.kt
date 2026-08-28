@@ -30,7 +30,13 @@ sealed interface Schedule {
 data class IntervalDosing(
     val startTime: TimeOfDay,
     val endTime: TimeOfDay,
-    val intervalHours: Int
+    val intervalHours: Int,
+    /**
+     * 打卡"已服用"时，紧邻的下一次要不要跟着顺延（见 ScheduleEngine.cascadeAfterTaken）。
+     * 不同药可能想要不同的行为——有的药严格按间隔算比按实际打卡时间顺延更重要，
+     * 所以挂在每种药自己的配置上，不是全局开关。默认开，跟这个功能刚上线时的行为一致。
+     */
+    val cascadeEnabled: Boolean = true
 )
 
 /** 与进餐的关系，仅作提示文案。 */
