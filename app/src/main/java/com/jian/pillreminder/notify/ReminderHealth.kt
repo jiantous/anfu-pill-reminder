@@ -205,25 +205,16 @@ object ReminderHealth {
 
     private const val TAG = "PillHealth"
 
-    /** 部分厂商（小米/华为/OPPO/vivo 等）另有自启动白名单，只能引导用户手动找。 */
-    fun vendorHint(): String? {
-        val brand = Build.MANUFACTURER.lowercase()
-        return when {
-            brand.contains("xiaomi") || brand.contains("redmi") ->
-                "小米手机还需在「设置 → 应用设置 → 授权管理 → 自启动管理」里允许安服自启动。"
-            brand.contains("huawei") || brand.contains("honor") ->
-                "华为/荣耀手机还需在「设置 → 应用 → 应用启动管理」里把安服改为手动管理，并勾选允许后台活动。"
-            brand.contains("oppo") || brand.contains("realme") || brand.contains("oneplus") ->
-                "OPPO/一加手机还需在「设置 → 电池 → 应用耗电管理」里允许安服后台运行。"
-            brand.contains("vivo") || brand.contains("iqoo") ->
-                "vivo 手机还需在「设置 → 电池 → 后台耗电管理」里允许安服高耗电。"
-            brand.contains("meizu") ->
-                "魅族手机还需在「设置 → 应用管理 → 权限管理」里允许安服后台运行。"
-            brand.contains("samsung") ->
-                "三星手机建议在「设置 → 应用 → 安服 → 电池」里选择「不受限制」。"
-            brand.contains("sony") ->
-                "索尼手机建议在「设置 → 电池 → 电池优化」里把安服设为「不优化」，并关闭 STAMINA 模式对它的限制。"
-            else -> null
-        }
-    }
+    /**
+     * 厂商省电机制提示。
+     *
+     * 曾经按品牌写过具体路径（小米自启动、华为应用启动管理……），但各品牌
+     * 菜单随系统版本频繁变动，写死的路径反而让用户在新系统上找不到入口
+     * （有用户反馈华为/荣耀找不到）。改为通用提示：说清目标，让用户用
+     * 设置搜索直达——这在所有品牌上都成立。
+     */
+    fun vendorHint(): String =
+        "部分手机（小米/华为/OPPO/vivo 等）还有单独的自启动管理。" +
+            "可在手机设置的搜索框里搜「自启动」或「后台运行」，找到后允许安服在后台运行。" +
+            "若上面的电池设置已设为不优化，这里没找到也可以不设。"
 }

@@ -67,8 +67,12 @@ android {
         // 9 = 1.1.7  设置页新增「界面」分组：整体界面缩放 80%/90%/100%/110%
         // 10 = 1.1.8 底部 Tab 切换时清空返回栈：根 tab（今天/药箱/统计）返回手势即退出，
         //             深层页（设置/关于/编辑）返回逐级回退，不再跨 tab 往复盘 N 页
-        versionCode = 10
-        versionName = "1.1.8"
+        // 11 = 1.1.9 库存测算：按每日剂量算出「够吃到几月几日」（每天多次/隔天/
+        //             每周固定几天/吃停周期均支持，暂停期不消耗）；
+        //             界面缩放改为 80%~130% 滑杆，5% 一档；
+        //             厂商自启动提示改为通用文案（不再写死各品牌菜单路径）
+        versionCode = 11
+        versionName = "1.1.9"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

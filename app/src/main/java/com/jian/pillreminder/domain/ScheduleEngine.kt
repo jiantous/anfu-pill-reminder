@@ -207,6 +207,43 @@ object ScheduleEngine {
         return Adherence(taken, skipped, missed, upcoming)
     }
 
+    /**
+     * 库存测算：从 [from]（不含当天，当天消耗已实时扣进 stockRemaining）起，
+     * 按服药计划逐日消耗 [Medication.stockRemaining]，算出库存够吃到哪天。
+     *
+     * 返回 null = 测不出来，调用方只显示原有库存文案。三种情况：
+     * - 没设库存，或单日消耗为零（没排服药时刻 / 已停用）
+     * - 400 天内吃不完（长期低剂量药，日期太远没有参考价值）
+     * - 在库存耗尽前疗程就结束了——"够吃"是因为停药了，不是库存充足，说
+     *   "够吃到 X 日"会误导用户以为不用续药
+     */
+    fun stockRunOutDate(
+        med: Medication,
+        from: LocalDate,
+        maxLookaheadDays: Long = 400
+    ): LocalDate? {
+        val stock = med.stockRemaining ?: return null
+        var remaining = stock
+        var date = from
+        var checked = 0L
+        while (checked <= maxLookaheadDays) {
+            if (isDueOn(med, date)) {
+                remaining -= med.dosage * med.times.size
+                // <= 0 而不是 < 0：返回的是"最后一片被吃掉"的日子（够吃到 X 日），
+                // 而不是"第一天吃不上"的日子——那对用户没有意义。
+                if (remaining <= 0) return date
+            }
+            // 疗程结束：库存还没耗尽就到终点了，视为"测不出"（见 doc）
+            med.endDate?.let { e ->
+                val end = runCatching { LocalDate.parse(e) }.getOrNull()
+                if (end != null && !date.isBefore(end)) return null
+            }
+            date = date.plusDays(1)
+            checked++
+        }
+        return null
+    }
+
     /** 人类可读的频率描述，用于卡片副标题。 */
     fun describeSchedule(med: Medication): String = when (val s = med.schedule) {
         is Schedule.Daily -> "每天"

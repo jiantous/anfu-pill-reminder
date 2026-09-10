@@ -42,7 +42,7 @@ import com.jian.pillreminder.notify.ReminderHealth
 @Composable
 fun ReminderSetupScreen(
     checks: List<ReminderHealth.Check>,
-    vendorHint: String?,
+    vendorHint: String,
     onFix: (ReminderHealth.Check) -> Unit,
     onDone: () -> Unit,
     onSkip: () -> Unit
@@ -96,24 +96,22 @@ fun ReminderSetupScreen(
             Spacer(Modifier.height(12.dp))
         }
 
-        vendorHint?.let { hint ->
-            Spacer(Modifier.height(4.dp))
-            Card(
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(Modifier.padding(14.dp)) {
-                    Icon(Icons.Filled.Info, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text("你的手机可能还需要一步", style = MaterialTheme.typography.titleSmall)
-                        Spacer(Modifier.height(4.dp))
-                        Text(hint, style = MaterialTheme.typography.bodySmall)
-                    }
+        Spacer(Modifier.height(4.dp))
+        Card(
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(Modifier.padding(14.dp)) {
+                Icon(Icons.Filled.Info, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text("你的手机可能还需要一步", style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(4.dp))
+                    Text(vendorHint, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }

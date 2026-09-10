@@ -251,4 +251,104 @@ class ScheduleEngineTest {
         assertFalse("挪到晚上就不该算错过", item.isOverdue(LocalDateTime.parse("2026-01-05T12:00:00")))
         assertTrue(item.isOverdue(LocalDateTime.parse("2026-01-05T22:00:00")))
     }
+
+    // ---- 库存测算 stockRunOutDate ----
+
+    /** 带库存的 med 工厂：其余参数同 med()。 */
+    private fun stocked(
+        stock: Double?,
+        schedule: Schedule,
+        start: String = "2026-01-01",
+        end: String? = null,
+        times: List<TimeOfDay> = listOf(TimeOfDay(8, 0)),
+        dosage: Double = 1.0
+    ) = Medication(
+        id = "m1",
+        name = "测试药",
+        schedule = schedule,
+        times = times,
+        startDate = start,
+        endDate = end,
+        dosage = dosage,
+        stockRemaining = stock
+    )
+
+    @Test
+    fun `每天一片吃七天正好第八天用完`() {
+        // 7 片，从 1/2 起每天 1 片：2~8 号每天扣 1，第 7 片在 8 号吃掉
+        val m = stocked(7.0, Schedule.Daily, start = "2026-01-01")
+        assertEquals(
+            LocalDate.parse("2026-01-08"),
+            ScheduleEngine.stockRunOutDate(m, LocalDate.parse("2026-01-02"))
+        )
+    }
+
+    @Test
+    fun `没设库存测不出`() {
+        val m = stocked(null, Schedule.Daily)
+        assertEquals(null, ScheduleEngine.stockRunOutDate(m, LocalDate.parse("2026-01-02")))
+    }
+
+    @Test
+    fun `每天三次按次数加速消耗`() {
+        // 每天 3 次 × 1 片 = 3 片/天，9 片从 1/2 起吃 3 天，1/4 用完
+        val m = stocked(
+            9.0, Schedule.Daily, start = "2026-01-01",
+            times = listOf(TimeOfDay(8, 0), TimeOfDay(13, 0), TimeOfDay(20, 0))
+        )
+        assertEquals(
+            LocalDate.parse("2026-01-04"),
+            ScheduleEngine.stockRunOutDate(m, LocalDate.parse("2026-01-02"))
+        )
+    }
+
+    @Test
+    fun `隔天服药消耗减半`() {
+        // 隔天 1 片（锚点 1/1），从 1/2 起的服药日是 1/3、1/5、1/7、1/9，
+        // 4 片在 1/9 用完
+        val m = stocked(4.0, Schedule.EveryNDays(2), start = "2026-01-01")
+        assertEquals(
+            LocalDate.parse("2026-01-09"),
+            ScheduleEngine.stockRunOutDate(m, LocalDate.parse("2026-01-02"))
+        )
+    }
+
+    @Test
+    fun `剂量二的单次消耗翻倍`() {
+        // 每天 2 片，4 片从 1/2 起吃 2 天，1/3 用完
+        val m = stocked(4.0, Schedule.Daily, start = "2026-01-01", dosage = 2.0)
+        assertEquals(
+            LocalDate.parse("2026-01-03"),
+            ScheduleEngine.stockRunOutDate(m, LocalDate.parse("2026-01-02"))
+        )
+    }
+
+    @Test
+    fun `疗程先于库存结束则测不出`() {
+        // 30 片每天 1 片能吃一个月，但疗程 1/10 就结束——不是库存够，是停药了
+        val m = stocked(30.0, Schedule.Daily, start = "2026-01-01", end = "2026-01-10")
+        assertEquals(
+            "疗程结束不该报出用完日期",
+            null,
+            ScheduleEngine.stockRunOutDate(m, LocalDate.parse("2026-01-02"))
+        )
+    }
+
+    @Test
+    fun `暂停期不消耗库存`() {
+        // 暂停到 1/5（含当天），从 1/2 起 1/2~1/5 不吃，4 片落在 1/6~1/9
+        val m = stocked(4.0, Schedule.Daily, start = "2026-01-01")
+            .copy(pausedUntil = "2026-01-05")
+        assertEquals(
+            LocalDate.parse("2026-01-09"),
+            ScheduleEngine.stockRunOutDate(m, LocalDate.parse("2026-01-02"))
+        )
+    }
+
+    @Test
+    fun `吃四百天还没吃完则测不出`() {
+        // 500 片每天 1 片，超过 400 天上限
+        val m = stocked(500.0, Schedule.Daily, start = "2026-01-01")
+        assertEquals(null, ScheduleEngine.stockRunOutDate(m, LocalDate.parse("2026-01-02")))
+    }
 }

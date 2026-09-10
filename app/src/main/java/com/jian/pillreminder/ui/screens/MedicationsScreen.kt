@@ -482,6 +482,10 @@ private fun MedicationCard(
                 val low = remaining <= med.stockThreshold
                 // 以"阈值的 4 倍"作为满格参考，纯展示用
                 val full = (med.stockThreshold * 4).coerceAtLeast(1.0)
+                // 库存测算：够吃到哪天。测算口径见 ScheduleEngine.stockRunOutDate。
+                val runOut = remember(med) {
+                    ScheduleEngine.stockRunOutDate(med, LocalDate.now())
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Filled.Inventory2,
@@ -492,8 +496,16 @@ private fun MedicationCard(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "剩 ${Reminders.formatDosage(remaining)}${med.unit}" +
-                            if (low) " · 该续药了" else "",
+                        buildString {
+                            append("剩 ${Reminders.formatDosage(remaining)}${med.unit}")
+                            // 低库存时说"哪天用完"（催续药），充足时说"够吃到哪天"（安心）
+                            when {
+                                low && runOut != null ->
+                                    append(" · 预计 ${runOut.format(RunOutDateFormat)}用完")
+                                low -> append(" · 该续药了")
+                                runOut != null -> append(" · 够吃到 ${runOut.format(RunOutDateFormat)}")
+                            }
+                        },
                         style = MaterialTheme.typography.labelMedium,
                         color = if (low) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurfaceVariant
@@ -521,6 +533,9 @@ private fun MedicationCard(
 private val PauseOptions = listOf(1 to "今天", 3 to "3 天", 7 to "1 周", 14 to "2 周", 30 to "1 个月")
 
 private val ResumeDateFormat = DateTimeFormatter.ofPattern("M 月 d 日")
+
+/** 库存测算的"够吃到/用完"日期格式，与暂停恢复日期同一风格。 */
+private val RunOutDateFormat = DateTimeFormatter.ofPattern("M 月 d 日")
 
 /**
  * 把 pausedUntil（暂停到这天为止，含当天）转成给人看的**恢复**日期，也就是次日。

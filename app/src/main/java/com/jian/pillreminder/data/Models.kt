@@ -166,12 +166,20 @@ val SNOOZE_OPTIONS = listOf(5, 15, 30, 60)
 const val DEFAULT_SNOOZE_MINUTES = 15
 
 /**
- * 界面缩放可选的档位（百分比）。
+ * 界面缩放的范围与步进。设置页用 Slider 展示：80%~130%，5% 一档吸附。
  *
- * 和默认值放一起，因为 [DEFAULT_UI_SCALE] 必须是这个表的成员——
- * 不是的话设置页会一个档位都不高亮。（理由同 [SNOOZE_OPTIONS]。）
+ * 上限给到 130%：想放大的用户（视力衰退、给老人用）反馈 110% 不够大；
+ * 下限 80% 与旧版一致，照顾小屏手机。
  */
-val UI_SCALE_OPTIONS = listOf(0.8f, 0.9f, 1.0f, 1.1f)
+const val UI_SCALE_MIN = 0.8f
+const val UI_SCALE_MAX = 1.3f
+const val UI_SCALE_STEP = 0.05f
+
+/** 把任意比例吸附到最近的 5% 档位，并夹在合法范围内。 */
+fun snapUiScale(value: Float): Float =
+    (value.coerceIn(UI_SCALE_MIN, UI_SCALE_MAX) / UI_SCALE_STEP)
+        .let { kotlin.math.round(it) * UI_SCALE_STEP }
+        .coerceIn(UI_SCALE_MIN, UI_SCALE_MAX)
 
 /** 默认界面缩放比例（100%）。 */
 const val DEFAULT_UI_SCALE = 1.0f
@@ -204,10 +212,10 @@ data class AppData(
      */
     val ongoingNotification: Boolean = true,
     /**
-     * 界面缩放比例。取值来自 [UI_SCALE_OPTIONS]。
+     * 界面缩放比例，80%~130% 的 5% 档位（见 [snapUiScale]）。
      *
-     * 1.0f = 100% 系统默认；0.8/0.9/1.1 分别对应 80%/90%/110%，整体放大缩小
-     * 界面（布局尺寸和文字一起，见 MainActivity 里的 Density.scale）。
+     * 1.0f = 100% 系统默认，整体放大缩小界面（布局尺寸和文字一起，
+     * 见 MainActivity 里的 Density.scale）。老数据里的旧四档值直接兼容。
      */
     val uiScale: Float = 1.0f,
     /** 是否已经走过首次的「提醒设置」引导。 */

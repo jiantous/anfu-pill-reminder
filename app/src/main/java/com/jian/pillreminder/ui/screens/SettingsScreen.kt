@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,16 +38,22 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jian.pillreminder.data.SNOOZE_OPTIONS
-import com.jian.pillreminder.data.UI_SCALE_OPTIONS
+import com.jian.pillreminder.data.UI_SCALE_MAX
+import com.jian.pillreminder.data.UI_SCALE_MIN
+import com.jian.pillreminder.data.UI_SCALE_STEP
+import com.jian.pillreminder.data.snapUiScale
 
-// 档位表在 data.SNOOZE_OPTIONS / data.UI_SCALE_OPTIONS，和默认值放在一起，避免两处不同步。
+// 档位表在 data.SNOOZE_OPTIONS，和默认值放在一起，避免两处不同步。
+// 界面缩放改为 80%~130%、5% 步进的 Slider（范围常量同在 data 里）。
 
 /** CSV 导出的时间范围选项。null = 全部历史。 */
 private val CsvRanges: List<Pair<Int?, String>> =
@@ -137,22 +144,36 @@ fun SettingsScreen(
             // ---- 界面 ----
             SettingsSection("界面") {
                 Text(
-                    "缩放整个界面（布局和文字一起）。",
+                    "缩放整个界面（布局和文字一起），5% 一档。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    UI_SCALE_OPTIONS.forEach { s ->
-                        FilterChip(
-                            selected = uiScale == s,
-                            onClick = { onUiScaleChange(s) },
-                            label = { Text("${(s * 100).toInt()}%") }
-                        )
-                    }
+                    // 本地拖动值：拖动中即时预览（吸附到 5% 档），松手才落盘。
+                    // 直接把 uiScale 当 Slider 值的话，每次吸附都会回写数据文件。
+                    var dragging by remember(uiScale) { mutableFloatStateOf(uiScale) }
+                    Slider(
+                        value = dragging,
+                        onValueChange = { raw ->
+                            dragging = raw
+                            onUiScaleChange(snapUiScale(raw))
+                        },
+                        valueRange = UI_SCALE_MIN..UI_SCALE_MAX,
+                        steps = ((UI_SCALE_MAX - UI_SCALE_MIN) / UI_SCALE_STEP).toInt() - 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "${(snapUiScale(dragging) * 100).toInt()}%",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.width(52.dp),
+                        textAlign = TextAlign.End
+                    )
                 }
             }
 

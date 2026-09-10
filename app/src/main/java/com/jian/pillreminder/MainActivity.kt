@@ -313,7 +313,7 @@ private fun PillApp(relaunchSignal: Int = 0) {
         route?.startsWith(Dest.About.route) == true
 
     // 界面缩放：把 LocalDensity 的 density 乘上 uiScale（档位见设置页）。
-    // 这样所有 dp 布局尺寸和 sp 字号一起按比例放大/缩小（80%~110%）。
+    // 这样所有 dp 布局尺寸和 sp 字号一起按比例放大/缩小（80%~130%，5% 一档）。
     // fontScale 保留系统原样，所以这里跟系统的"大字模式"是相乘叠加、
     // 而不是互相覆盖——用户改系统字号时 App 仍正常跟随。
     val baseDensity = LocalDensity.current
