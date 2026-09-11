@@ -58,7 +58,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -287,37 +286,13 @@ private fun ProgressSummary(taken: Int, total: Int) {
     val animated by animateFloatAsState(progress, label = "todayProgress")
     val allDone = total > 0 && taken == total
 
-    // 全部完成的庆祝：卡片弹一下（scale 1→1.04→1，MediumBouncy 弹簧）。
-    // 触发时机 = allDone 从 false 变 true 的那一刻，而不是"已完成状态持续存在"，
-    // 所以用 remember 记上一次值，只有刚达成时播动画，进页面时已经是完成态不弹。
-    var wasAllDone by remember { mutableStateOf(false) }
-    val celebrating = allDone && !wasAllDone
-    LaunchedEffect(allDone) {
-        if (allDone && !wasAllDone) {
-            kotlinx.coroutines.delay(600)
-            wasAllDone = true
-        } else if (!allDone) {
-            wasAllDone = false
-        }
-    }
-    val celebrationScale by animateFloatAsState(
-        targetValue = if (celebrating) 1.04f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "celebration"
-    )
-
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .scale(celebrationScale)
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
