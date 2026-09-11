@@ -72,10 +72,7 @@ fun BackupScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         }
     ) { padding ->
@@ -117,7 +114,7 @@ fun BackupScreen(
                     Button(
                         onClick = onBackup,
                         enabled = !busy,
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Filled.CloudUpload, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
@@ -128,7 +125,7 @@ fun BackupScreen(
                     FilledTonalButton(
                         onClick = onImport,
                         enabled = !busy,
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
@@ -204,7 +201,7 @@ fun ImportConfirmDialog(
                     )
                 }
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(16.dp))
                 Text("这台手机现在", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(4.dp))
                 Text(

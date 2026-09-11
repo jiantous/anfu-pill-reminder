@@ -107,7 +107,7 @@ fun ReminderSetupScreen(
         ) {
             Row(Modifier.padding(14.dp)) {
                 Icon(Icons.Filled.Info, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(12.dp))
                 Column {
                     Text("你的手机可能还需要一步", style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(4.dp))
@@ -119,7 +119,7 @@ fun ReminderSetupScreen(
         Spacer(Modifier.height(28.dp))
         Button(
             onClick = onDone,
-            modifier = Modifier.fillMaxWidth().height(52.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (allGranted) "全部就绪，开始使用" else "先这样，进入应用")
         }
@@ -180,7 +180,7 @@ private fun CheckRow(check: ReminderHealth.Check, onFix: () -> Unit) {
                     }
                 }
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(check.title, style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(2.dp))
@@ -194,7 +194,7 @@ private fun CheckRow(check: ReminderHealth.Check, onFix: () -> Unit) {
                 )
                 // 部分手机不弹一键确认框，只能跳设置页，这里明确告诉用户到了要点什么
                 if (!check.granted && check.manualStep != null) {
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         "→ ${check.manualStep}",
                         style = MaterialTheme.typography.labelMedium,
@@ -233,7 +233,7 @@ fun ReminderHealthBanner(
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.NotificationsActive, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(12.dp))
                 Text(
                     if (hasCritical) "提醒可能不会响" else "提醒可能不准时",
                     style = MaterialTheme.typography.titleSmall
@@ -244,7 +244,7 @@ fun ReminderHealthBanner(
                 "还有 ${pending.size} 项设置没打开：${pending.joinToString("、") { it.title }}",
                 style = MaterialTheme.typography.bodySmall
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End

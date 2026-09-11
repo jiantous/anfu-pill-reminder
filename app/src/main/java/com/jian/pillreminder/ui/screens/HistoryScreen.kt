@@ -63,7 +63,7 @@ import java.time.format.DateTimeFormatter
 private val RangeOptions = listOf(7 to "近 7 天", 30 to "近 30 天", 90 to "近 90 天")
 
 @Composable
-fun HistoryScreen(vm: MedViewModel) {
+fun HistoryScreen(vm: MedViewModel, modifier: Modifier = Modifier) {
     val data by vm.data.collectAsState()
     var rangeIndex by remember { mutableIntStateOf(0) }
     var month by remember { mutableStateOf(YearMonth.now()) }
@@ -73,7 +73,7 @@ fun HistoryScreen(vm: MedViewModel) {
         EmptyState(
             icon = Icons.Filled.Insights,
             title = "还没有服药记录",
-            subtitle = "",
+            subtitle = "添加药品并在今日清单打卡后，这里会显示依从率、周完成度和日历",
             modifier = Modifier.fillMaxSize().padding(top = 80.dp)
         )
         return
@@ -83,7 +83,7 @@ fun HistoryScreen(vm: MedViewModel) {
     val stat = remember(data, rangeIndex) { vm.adherence(days) }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -258,7 +258,7 @@ private fun WeeklyChart(vm: MedViewModel) {
             Spacer(Modifier.height(16.dp))
             MiniBarChart(values = values, labels = labels)
             if (values.all { it == 0f }) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(
                     "这 7 天还没有打卡记录",
                     style = MaterialTheme.typography.bodySmall,
@@ -315,7 +315,7 @@ private fun MonthCalendarCard(
                     )
                 }
             }
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
 
             // 首日之前补空格，让日期落在正确的星期列（周一为第一列）
             val firstDay = month.atDay(1)
@@ -349,10 +349,13 @@ private fun MonthCalendarCard(
                 }
             }
 
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                // 部分服用原来用 tertiary：动态取色下它和 primary 同源自壁纸主色，
+                // 小圆点上肉眼难分。改成 primary 的降透明度——同色相深浅有别，
+                // "深=全，浅=部分"的语义在任何壁纸下都成立。
                 LegendDot("全部服用", MaterialTheme.colorScheme.primary)
-                LegendDot("部分服用", MaterialTheme.colorScheme.tertiary)
+                LegendDot("部分服用", MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
                 LegendDot("有漏服", MaterialTheme.colorScheme.error)
             }
         }
@@ -371,7 +374,8 @@ private fun DayCell(
     val bg = when {
         isFuture && status != DayStatus.NONE -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         status == DayStatus.ALL_TAKEN -> MaterialTheme.colorScheme.primary
-        status == DayStatus.PARTIAL -> MaterialTheme.colorScheme.tertiary
+        // 与图例同步：部分服用 = primary 降透明度（同色深浅语义，见图例处注释）
+        status == DayStatus.PARTIAL -> MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
         status == DayStatus.MISSED -> MaterialTheme.colorScheme.error
         status == DayStatus.UPCOMING -> MaterialTheme.colorScheme.surfaceVariant
         else -> Color.Transparent
@@ -379,7 +383,7 @@ private fun DayCell(
     val fg = when {
         isFuture && status != DayStatus.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
         status == DayStatus.ALL_TAKEN -> MaterialTheme.colorScheme.onPrimary
-        status == DayStatus.PARTIAL -> MaterialTheme.colorScheme.onTertiary
+        status == DayStatus.PARTIAL -> MaterialTheme.colorScheme.onPrimary
         status == DayStatus.MISSED -> MaterialTheme.colorScheme.onError
         status == DayStatus.UPCOMING -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSurface

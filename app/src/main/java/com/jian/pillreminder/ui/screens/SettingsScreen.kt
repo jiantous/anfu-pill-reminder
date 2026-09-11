@@ -51,6 +51,8 @@ import com.jian.pillreminder.data.UI_SCALE_MAX
 import com.jian.pillreminder.data.UI_SCALE_MIN
 import com.jian.pillreminder.data.UI_SCALE_STEP
 import com.jian.pillreminder.data.snapUiScale
+import com.jian.pillreminder.ui.components.SettingsSection
+import com.jian.pillreminder.ui.components.SwitchRow
 
 // 档位表在 data.SNOOZE_OPTIONS，和默认值放在一起，避免两处不同步。
 // 界面缩放改为 80%~130%、5% 步进的 Slider（范围常量同在 data 里）。
@@ -96,10 +98,7 @@ fun SettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         }
     ) { padding ->
@@ -137,7 +136,7 @@ fun SettingsScreen(
                 Spacer(Modifier.height(12.dp))
                 FilledTonalButton(
                     onClick = onOpenReminderSetup,
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) { Text("检查提醒功能是否正常") }
             }
 
@@ -198,14 +197,14 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     FilledTonalButton(
                         onClick = { onExportCsv(selectedRange) },
                         enabled = !busy,
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text("另存为")
                     }
                     FilledTonalButton(
@@ -214,7 +213,7 @@ fun SettingsScreen(
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.Filled.Share, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text("分享")
                     }
                 }
@@ -229,7 +228,7 @@ fun SettingsScreen(
                 Spacer(Modifier.height(8.dp))
                 FilledTonalButton(
                     onClick = onOpenBackup,
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Filled.CloudUpload, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -248,7 +247,7 @@ fun SettingsScreen(
                 Spacer(Modifier.height(8.dp))
                 FilledTonalButton(
                     onClick = onOpenAbout,
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Filled.Info, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -267,54 +266,5 @@ fun SettingsScreen(
             text = { Text(msg) },
             confirmButton = { TextButton(onClick = onClearMessage) { Text("好") } }
         )
-    }
-}
-
-/** 标题 + 卡片 + 间距，沿用备份页的节奏。 */
-@Composable
-private fun SettingsSection(
-    title: String,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
-) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-    )
-    Card(
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(Modifier.padding(20.dp), content = content)
-    }
-    Spacer(Modifier.height(20.dp))
-}
-
-/** 左侧标题+说明，右侧开关。 */
-@Composable
-private fun SwitchRow(
-    title: String,
-    subtitle: String? = null,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            if (subtitle != null) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        Spacer(Modifier.width(12.dp))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

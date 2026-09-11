@@ -12,6 +12,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,6 +58,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -61,6 +71,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -312,6 +323,10 @@ private fun PillApp(relaunchSignal: Int = 0) {
         route?.startsWith(Dest.Settings.route) == true ||
         route?.startsWith(Dest.About.route) == true
 
+    // 顶栏滚动行为：上滑收起顶栏给内容让位，下滑回弹出现。
+    // 三个根 tab 都是 LazyColumn，统一接同一个 scrollBehavior。
+    val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     // 界面缩放：把 LocalDensity 的 density 乘上 uiScale（档位见设置页）。
     // 这样所有 dp 布局尺寸和 sp 字号一起按比例放大/缩小（80%~130%，5% 一档）。
     // fontScale 保留系统原样，所以这里跟系统的"大字模式"是相乘叠加、
@@ -340,9 +355,7 @@ private fun PillApp(relaunchSignal: Int = 0) {
                             Icon(Icons.Filled.Settings, contentDescription = "设置")
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
+                    scrollBehavior = topBarScrollBehavior
                 )
             }
         },
@@ -412,22 +425,60 @@ private fun PillApp(relaunchSignal: Int = 0) {
         },
         floatingActionButton = {
             if (route == Dest.Today.route || route == Dest.Meds.route) {
+                // FAB 收起逻辑：根 tab 的列表向上滚动时收起、停住后回弹展开。
+                // 列表 state 由页面内部持有并通过 SharedFlow 之类同步会绕远路，
+                // 简单可靠的做法：顶栏 scrollBehavior 的 stateOffset 就是滚动信号。
+                val fabHidden = topBarScrollBehavior.state.collapsedFraction > 0.1f
                 ExtendedFloatingActionButton(
                     onClick = { editingId = null; nav.navigate(Dest.Edit.route) },
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("加药") }
+                    text = { Text("加药") },
+                    expanded = !fabHidden
                 )
             }
         }
     ) { padding ->
+        // 转场规则：三个根 tab 之间是同级切换，用 fade + 轻微上浮（纯 fade 在
+        // 内容相近的列表之间观感接近闪切，加 4% 高度的上浮位移让它"有形"）；
+        // 进出编辑/设置等子页面用水平滑移，表达层级推进/返回。
+        // 注意判断用的是转场 scope 的 targetState（即将显示的路由），
+        // 而不是外层捕获的 route——后者在重组时机上和转场求值不同步。
+        val tabFade = 260
+        val pageSlide = 300
+        fun isChildRoute(r: String?): Boolean = r != null && (
+            r.startsWith(Dest.Edit.route) || r.startsWith(Dest.Scan.route) ||
+                r.startsWith(Dest.Setup.route) || r.startsWith(Dest.Backup.route) ||
+                r.startsWith(Dest.Settings.route) || r.startsWith(Dest.About.route)
+            )
         NavHost(
             navController = nav,
             startDestination = Dest.Today.route,
-            modifier = Modifier.padding(padding)
+            modifier = Modifier.padding(padding),
+            enterTransition = {
+                if (isChildRoute(targetState.destination.route))
+                    slideInHorizontally(tween(pageSlide)) { it / 4 } + fadeIn(tween(pageSlide))
+                else fadeIn(tween(tabFade)) + slideInVertically(tween(tabFade)) { it / 24 }
+            },
+            exitTransition = {
+                if (isChildRoute(targetState.destination.route))
+                    slideOutHorizontally(tween(pageSlide)) { -it / 4 } + fadeOut(tween(pageSlide))
+                else fadeOut(tween(tabFade / 2))
+            },
+            popEnterTransition = {
+                if (isChildRoute(targetState.destination.route))
+                    slideInHorizontally(tween(pageSlide)) { -it / 4 } + fadeIn(tween(pageSlide))
+                else fadeIn(tween(tabFade))
+            },
+            popExitTransition = {
+                if (isChildRoute(targetState.destination.route))
+                    slideOutHorizontally(tween(pageSlide)) { it / 4 } + fadeOut(tween(pageSlide))
+                else fadeOut(tween(tabFade / 2))
+            }
         ) {
             composable(Dest.Today.route) {
                 TodayScreen(
                     vm = vm,
+                    modifier = Modifier.nestedScroll(topBarScrollBehavior.nestedScrollConnection),
                     onAddMedication = { editingId = null; nav.navigate(Dest.Edit.route) },
                     onOpenMedication = { id -> editingId = id; nav.navigate(Dest.Edit.route) },
                     permissionBanner = run {
@@ -452,12 +503,16 @@ private fun PillApp(relaunchSignal: Int = 0) {
             composable(Dest.Meds.route) {
                 MedicationsScreen(
                     vm = vm,
+                    modifier = Modifier.nestedScroll(topBarScrollBehavior.nestedScrollConnection),
                     onOpenMedication = { id -> editingId = id; nav.navigate(Dest.Edit.route) }
                 )
             }
 
             composable(Dest.History.route) {
-                HistoryScreen(vm = vm)
+                HistoryScreen(
+                    vm = vm,
+                    modifier = Modifier.nestedScroll(topBarScrollBehavior.nestedScrollConnection)
+                )
             }
 
             composable(Dest.Edit.route) {

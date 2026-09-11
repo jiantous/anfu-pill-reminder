@@ -191,10 +191,7 @@ fun EditMedicationScreen(
                         }
                     }
                     TextButton(onClick = { commit() }) { Text("保存") }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         }
     ) { padding ->
@@ -222,7 +219,7 @@ fun EditMedicationScreen(
             if (isNew && onScanLeaflet != null) {
                 OutlinedButton(
                     onClick = onScanLeaflet,
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Filled.PhotoCamera, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
@@ -243,7 +240,7 @@ fun EditMedicationScreen(
                 ) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.AutoAwesome, null, Modifier.size(20.dp))
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(12.dp))
                         Text(prefillNote, style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -381,7 +378,7 @@ fun EditMedicationScreen(
                         )
                     }
                 }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(16.dp))
 
                 when (freqTab) {
                     FreqTab.DAILY -> Text(
@@ -396,8 +393,8 @@ fun EditMedicationScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(Modifier.height(10.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             (1..7).forEach { d ->
                                 val selected = d in weekDays
                                 Box(
@@ -428,7 +425,7 @@ fun EditMedicationScreen(
                     FreqTab.INTERVAL -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("每隔", style = MaterialTheme.typography.bodyLarge)
-                            Spacer(Modifier.width(10.dp))
+                            Spacer(Modifier.width(12.dp))
                             OutlinedTextField(
                                 value = intervalDays,
                                 onValueChange = { intervalDays = it.filter { c -> c.isDigit() }.take(3) },
@@ -436,10 +433,10 @@ fun EditMedicationScreen(
                                 singleLine = true,
                                 modifier = Modifier.width(90.dp)
                             )
-                            Spacer(Modifier.width(10.dp))
+                            Spacer(Modifier.width(12.dp))
                             Text("天吃一次", style = MaterialTheme.typography.bodyLarge)
                         }
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(8.dp))
                         Text(
                             "填 2 就是隔天吃。从下面的「开始日期」算起。",
                             style = MaterialTheme.typography.bodySmall,
@@ -471,7 +468,7 @@ fun EditMedicationScreen(
                             Spacer(Modifier.width(8.dp))
                             Text("天", style = MaterialTheme.typography.bodyLarge)
                         }
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(8.dp))
                         Text(
                             "适合避孕药、激素类等周期性用药，循环往复。",
                             style = MaterialTheme.typography.bodySmall,
@@ -555,10 +552,10 @@ fun EditMedicationScreen(
             // ---- 外观 ----
             SettingCard("图标与颜色") {
                 Text("颜色", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     MedColors.forEachIndexed { index, c ->
                         val selected = draft.colorIndex == index
@@ -588,12 +585,12 @@ fun EditMedicationScreen(
                         }
                     }
                 }
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(16.dp))
                 Text("图标", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     MedIcons.forEachIndexed { index, (label, icon) ->
                         val selected = draft.iconIndex == index
@@ -628,7 +625,7 @@ fun EditMedicationScreen(
             Spacer(Modifier.height(20.dp))
             FilledTonalButton(
                 onClick = { commit() },
-                modifier = Modifier.fillMaxWidth().height(52.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Filled.Check, null)
                 Spacer(Modifier.width(8.dp))

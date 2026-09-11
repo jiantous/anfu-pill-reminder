@@ -71,8 +71,12 @@ android {
         //             每周固定几天/吃停周期均支持，暂停期不消耗）；
         //             界面缩放改为 80%~130% 滑杆，5% 一档；
         //             厂商自启动提示改为通用文案（不再写死各品牌菜单路径）
-        versionCode = 11
-        versionName = "1.1.9"
+        // 12 = 1.1.10 UI 规范化改造（仍是 Material 风格，无功能变更）：动效系统
+        //             （tab 转场/列表弹簧动画/顶栏滚动收起/FAB 收起/完成庆祝）、
+        //             药品 8 色跟随壁纸取色、错过卡片红边条、按钮回归 M3 默认 40dp、
+        //             间距收敛 4dp 网格、日历图例深浅区分、空状态文案统一
+        versionCode = 12
+        versionName = "1.1.10"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

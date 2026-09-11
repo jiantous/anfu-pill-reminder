@@ -92,11 +92,81 @@ private val SeedDark = darkColorScheme(
 
 /** 药品卡片可选配色：(浅色容器, 浅色前景, 深色容器, 深色前景)。 */
 data class MedColor(val name: String, val light: Color, val onLight: Color, val dark: Color, val onDark: Color) {
+    /**
+     * 容器色：Android 12+ 动态取色时向壁纸主色调和（harmonize）——
+     * 色相身份保留（蓝还是蓝、粉还是粉），但色度向主题靠拢，
+     * 任何壁纸下 8 个颜色都和整体观感协调（Seal 的做法）。
+     * Android 11 及以下维持原色（种子色主题下本来就是配好的）。
+     */
     @Composable
-    fun container(): Color = if (isSystemInDarkTheme()) dark else light
+    fun container(): Color {
+        val raw = if (isSystemInDarkTheme()) dark else light
+        return harmonizeWithPrimary(raw)
+    }
 
     @Composable
-    fun content(): Color = if (isSystemInDarkTheme()) onDark else onLight
+    fun content(): Color {
+        val raw = if (isSystemInDarkTheme()) onDark else onLight
+        return harmonizeWithPrimary(raw)
+    }
+}
+
+/**
+ * 把颜色向当前主题 primary 调和（Material Harmonization 的简化实现：
+ * HSL 空间把色相转到主色方向的 1/3 处，饱和度向主色靠 30%）。
+ * 与 com.google.android.material 的 MaterialColors.harmonize 算法意图一致，
+ * 自实现是为了不为此引入整个 material 库依赖。
+ * material3 的 dynamicColorScheme 取自壁纸，锚点用 colorScheme.primary
+ * 就是"向壁纸主色靠"。
+ */
+@Composable
+private fun harmonizeWithPrimary(color: Color): Color {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return color
+    val anchor = MaterialTheme.colorScheme.primary
+    val hsl = color.toHsl()
+    val anchorHsl = anchor.toHsl()
+    // 色相：取两者圆环上的 1/3 点（更靠近原色，保留药品颜色的辨识度）
+    val blendedHue = blendHuesCircular(hsl[0], anchorHsl[0], 1f / 3f)
+    // 饱和度：向主色靠 30%。药品容器色本身是低饱和的，只需轻微牵引
+    val blendedSat = hsl[1] + (anchorHsl[1] - hsl[1]) * 0.3f
+    return hslToColor(blendedHue, blendedSat.coerceIn(0f, 1f), hsl[2])
+}
+
+/** RGB → HSL（h:0-360, s:0-1, l:0-1）。 */
+private fun Color.toHsl(): FloatArray {
+    val r = red; val g = green; val b = blue
+    val max = maxOf(r, g, b); val min = minOf(r, g, b)
+    val l = (max + min) / 2f
+    val delta = max - min
+    if (delta == 0f) return floatArrayOf(0f, 0f, l)
+    val s = if (l > 0.5f) delta / (2f - max - min) else delta / (max + min)
+    val h = when (max) {
+        r -> ((g - b) / delta + (if (g < b) 6f else 0f))
+        g -> (b - r) / delta + 2f
+        else -> (r - g) / delta + 4f
+    } * 60f
+    return floatArrayOf(h, s, l)
+}
+
+/** HSL → RGB。 */
+private fun hslToColor(h: Float, s: Float, l: Float): Color {
+    val c = (1f - kotlin.math.abs(2f * l - 1f)) * s
+    val hp = (h % 360f) / 60f
+    val x = c * (1f - kotlin.math.abs(hp % 2f - 1f))
+    val (r1, g1, b1) = when (hp.toInt()) {
+        0 -> Triple(c, x, 0f); 1 -> Triple(x, c, 0f); 2 -> Triple(0f, c, x)
+        3 -> Triple(0f, x, c); 4 -> Triple(x, 0f, c); else -> Triple(c, 0f, x)
+    }
+    val m = l - c / 2f
+    return Color(r1 + m, g1 + m, b1 + m)
+}
+
+/** 色相圆环插值：从 from 出发向 to 走 t 比例，走最短弧。 */
+private fun blendHuesCircular(from: Float, to: Float, t: Float): Float {
+    var diff = (to - from) % 360f
+    if (diff > 180f) diff -= 360f
+    if (diff < -180f) diff += 360f
+    return (from + diff * t + 360f) % 360f
 }
 
 val MedColors = listOf(
@@ -112,6 +182,10 @@ val MedColors = listOf(
 
 fun medColorAt(index: Int): MedColor = MedColors[index.mod(MedColors.size)]
 
+// 说明：MaterialExpressiveTheme/MotionScheme 在 material3 1.4.0（BOM 2026.06.01
+// 实际解析版本）仍是 internal（编译为 *$material3 后缀的 JVM 名，外部不可调），
+// 1.5.0 才转正。这里维持 MaterialTheme + 手写 Expressive 形状/动效的做法，
+// 升级 BOM 到 1.5+ 后可切换官方 API。
 @Composable
 fun PillReminderTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

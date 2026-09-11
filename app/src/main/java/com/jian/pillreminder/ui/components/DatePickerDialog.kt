@@ -107,7 +107,7 @@ fun DatePickerDialog(
                     )
                 }
                 if (error != null) {
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         error,
                         style = MaterialTheme.typography.bodySmall,

@@ -182,7 +182,7 @@ fun ScanLeafletScreen(
                     CircularProgressIndicator()
                     Spacer(Modifier.height(20.dp))
                     Text("正在识别文字…", style = MaterialTheme.typography.bodyLarge)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         "全程在你手机本地完成，照片不会上传",
                         style = MaterialTheme.typography.bodySmall,
@@ -531,14 +531,14 @@ private fun ResultPane(
                 ) {
                     Column(Modifier.padding(14.dp)) {
                         Text("已自动纠正易认错的字", style = MaterialTheme.typography.titleSmall)
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(8.dp))
                         result.nameFixes.forEach { fix ->
                             Text(
                                 "「${fix.from}」→「${fix.to}」",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(8.dp))
                         Text(
                             "如果纠正错了，填入表单后可以直接改回来。",
                             style = MaterialTheme.typography.labelSmall
@@ -587,18 +587,18 @@ private fun ResultPane(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(
                 onClick = onRetake,
-                modifier = Modifier.weight(1f).height(50.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Filled.Refresh, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 Text("重拍")
             }
             Button(
                 onClick = onUse,
-                modifier = Modifier.weight(1f).height(50.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Filled.Check, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(if (result.hasAnything) "填入表单" else "手动填写")
             }
         }

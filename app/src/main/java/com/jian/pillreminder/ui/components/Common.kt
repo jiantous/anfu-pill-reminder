@@ -252,12 +252,14 @@ fun MiniBarChart(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(if (animatedH < 4f && v > 0f) 4.dp else animatedH.dp)
-                                .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 10.dp, bottomEnd = 10.dp))
+                                // 只有顶部圆角：柱子底边要贴住基线，底部圆角会让
+                                // 柱子看起来"浮"在轨道上（贴基线原则）
+                                .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
                                 .background(barColor)
                         )
                     }
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Text(
                     labels.getOrElse(i) { "" },
                     style = MaterialTheme.typography.labelSmall,
@@ -286,7 +288,7 @@ fun GroupLabel(
                 .clip(CircleShape)
                 .background(color)
         )
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(12.dp))
         Text(
             "$text · $count",
             style = MaterialTheme.typography.titleSmall,

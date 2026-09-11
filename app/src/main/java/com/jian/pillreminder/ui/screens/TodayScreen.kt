@@ -1,7 +1,11 @@
 package com.jian.pillreminder.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +57,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -79,7 +88,8 @@ fun TodayScreen(
     vm: MedViewModel,
     onAddMedication: () -> Unit,
     onOpenMedication: (String) -> Unit,
-    permissionBanner: (@Composable () -> Unit)? = null
+    permissionBanner: (@Composable () -> Unit)? = null,
+    modifier: Modifier = Modifier
 ) {
     val doses by vm.dosesForSelectedDate.collectAsState()
     val date by vm.selectedDate.collectAsState()
@@ -99,9 +109,9 @@ fun TodayScreen(
     val done = doses.filter { it.status != DoseStatus.PENDING }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 备份横幅已删（用户要求），只剩提醒体检横幅
         permissionBanner?.let { banner ->
@@ -153,6 +163,14 @@ fun TodayScreen(
             items(overdue, key = { it.key }) { item ->
                 DoseCard(
                     item, now,
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        placementSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ),
                     onToggle = { vm.toggleTaken(item) },
                     onSkip = { vm.markSkipped(item) },
                     onOpen = { onOpenMedication(item.medication.id) },
@@ -167,6 +185,14 @@ fun TodayScreen(
             items(pending, key = { it.key }) { item ->
                 DoseCard(
                     item, now,
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        placementSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ),
                     onToggle = { vm.toggleTaken(item) },
                     onSkip = { vm.markSkipped(item) },
                     onOpen = { onOpenMedication(item.medication.id) },
@@ -181,6 +207,14 @@ fun TodayScreen(
             items(done, key = { it.key }) { item ->
                 DoseCard(
                     item, now,
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        placementSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ),
                     onToggle = { vm.toggleTaken(item) },
                     onSkip = { vm.markSkipped(item) },
                     onOpen = { onOpenMedication(item.medication.id) },
@@ -251,13 +285,39 @@ private fun DateHeader(
 private fun ProgressSummary(taken: Int, total: Int) {
     val progress = if (total == 0) 0f else taken.toFloat() / total
     val animated by animateFloatAsState(progress, label = "todayProgress")
+    val allDone = total > 0 && taken == total
+
+    // 全部完成的庆祝：卡片弹一下（scale 1→1.04→1，MediumBouncy 弹簧）。
+    // 触发时机 = allDone 从 false 变 true 的那一刻，而不是"已完成状态持续存在"，
+    // 所以用 remember 记上一次值，只有刚达成时播动画，进页面时已经是完成态不弹。
+    var wasAllDone by remember { mutableStateOf(false) }
+    val celebrating = allDone && !wasAllDone
+    LaunchedEffect(allDone) {
+        if (allDone && !wasAllDone) {
+            kotlinx.coroutines.delay(600)
+            wasAllDone = true
+        } else if (!allDone) {
+            wasAllDone = false
+        }
+    }
+    val celebrationScale by animateFloatAsState(
+        targetValue = if (celebrating) 1.04f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "celebration"
+    )
 
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        )
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(celebrationScale)
     ) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -265,7 +325,7 @@ private fun ProgressSummary(taken: Int, total: Int) {
                     // 刻意不放 emoji：它由系统字体渲染，颜色和字重都跟不上主题，
                     // 在这张深色卡片上很突兀。文字本身已经说清楚了。
                     Text(
-                        if (taken == total) "今天的药都吃完了" else "今日进度",
+                        if (allDone) "今天的药都吃完了，安心休息" else "今日进度",
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(Modifier.height(2.dp))
@@ -280,7 +340,7 @@ private fun ProgressSummary(taken: Int, total: Int) {
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
             LinearProgressIndicator(
                 progress = { animated },
                 modifier = Modifier
@@ -329,6 +389,7 @@ private fun LowStockBanner(meds: List<Medication>) {
 private fun DoseCard(
     item: DoseItem,
     now: java.time.LocalDateTime,
+    modifier: Modifier = Modifier,
     onToggle: () -> Unit,
     onSkip: () -> Unit,
     onOpen: () -> Unit,
@@ -340,21 +401,57 @@ private fun DoseCard(
     val isTaken = item.status == DoseStatus.TAKEN
     val isSkipped = item.status == DoseStatus.SKIPPED
     val isOverdue = item.isOverdue(now)
+    // drawBehind 的 lambda 不是 Composable 上下文，颜色得先在这里取出来捕获
+    val errorColor = MaterialTheme.colorScheme.error
+    val primaryColor = MaterialTheme.colorScheme.primary
+    // 容器色动画：打卡瞬间从 surfaceContainer 平滑过渡到完成态的
+    // surfaceContainerLowest——原先是硬切，两色只差一级灰度看不出"渐变"，
+    // 现在配 400ms tween，过渡本身成为完成反馈的一部分。
+    val containerColor by animateColorAsState(
+        targetValue = when {
+            isTaken || isSkipped -> MaterialTheme.colorScheme.surfaceContainerLowest
+            else -> MaterialTheme.colorScheme.surfaceContainer
+        },
+        animationSpec = tween(400),
+        label = "doseContainer"
+    )
 
     Card(
+        modifier = modifier,
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = when {
-                isTaken || isSkipped -> MaterialTheme.colorScheme.surfaceContainerLow
-                isOverdue -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f)
-                else -> MaterialTheme.colorScheme.surfaceContainer
-            }
+            containerColor = containerColor
         )
     ) {
+        // 左边条状态色：错过 = error 红；已完成 = primary 主色。
+        // 错过条常显；完成条随打卡动画出现（弹簧缩放从 0 长到全高）。
+        val stripeColor = when {
+            isOverdue -> errorColor
+            isTaken || isSkipped -> primaryColor
+            else -> androidx.compose.ui.graphics.Color.Transparent
+        }
+        val stripeScale by animateFloatAsState(
+            targetValue = if (isTaken || isSkipped || isOverdue) 1f else 0f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "stripeScale"
+        )
         Column(
             Modifier
+                .drawBehind {
+                    if (stripeScale > 0.01f) {
+                        drawRoundRect(
+                            color = stripeColor,
+                            topLeft = Offset(0f, size.height * (1f - stripeScale) / 2f),
+                            size = Size(5.dp.toPx(), size.height * stripeScale),
+                            cornerRadius = CornerRadius(2.5.dp.toPx())
+                        )
+                    }
+                }
                 .clickable(onClick = onOpen)
-                .padding(16.dp)
+                .padding(20.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MedBadge(
@@ -364,7 +461,7 @@ private fun DoseCard(
                     size = 46.dp,
                     modifier = Modifier.alpha(if (isTaken || isSkipped) 0.55f else 1f)
                 )
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -377,7 +474,7 @@ private fun DoseCard(
                         )
                         // 示例药不会真的提醒，必须标出来，否则用户会以为提醒失灵了
                         if (med.isSample) {
-                            Spacer(Modifier.width(6.dp))
+                            Spacer(Modifier.width(8.dp))
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
                                 color = MaterialTheme.colorScheme.tertiaryContainer,
@@ -439,7 +536,7 @@ private fun DoseCard(
 
             AnimatedVisibility(visible = item.status == DoseStatus.PENDING) {
                 Row(
-                    Modifier.fillMaxWidth().padding(top = 6.dp),
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
                     // 挪过的给一个撤销入口，否则用户找不到怎么恢复
@@ -465,7 +562,7 @@ private fun DoseCard(
                     Spacer(Modifier.width(4.dp))
                     FilledTonalButton(onClick = onToggle) {
                         Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text("已服用")
                     }
                 }

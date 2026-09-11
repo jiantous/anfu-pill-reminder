@@ -1,5 +1,7 @@
 package com.jian.pillreminder.ui.screens
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,7 +80,8 @@ import java.time.temporal.ChronoUnit
 @Composable
 fun MedicationsScreen(
     vm: MedViewModel,
-    onOpenMedication: (String) -> Unit
+    onOpenMedication: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val meds by vm.activeMedications.collectAsState()
     val hasSample by vm.hasSampleData.collectAsState()
@@ -96,16 +99,16 @@ fun MedicationsScreen(
         EmptyState(
             icon = Icons.Filled.Medication,
             title = "药箱是空的",
-            subtitle = "",
+            subtitle = "点右下角「加药」把在吃的药登记进来，今日清单会自动生成",
             modifier = Modifier.fillMaxSize().padding(top = 80.dp)
         )
         return
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (hasSample) {
             item { SampleNotice(onClear = { pendingClearSamples = true }) }
@@ -127,6 +130,14 @@ fun MedicationsScreen(
             items(active, key = { it.id }) { med ->
                 MedicationCard(
                     med = med,
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        placementSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ),
                     onClick = { onOpenMedication(med.id) },
                     onArchive = { vm.toggleArchived(med) },
                     onDelete = { pendingDelete = med },
@@ -154,6 +165,14 @@ fun MedicationsScreen(
             items(archived, key = { it.id }) { med ->
                 MedicationCard(
                     med = med,
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        placementSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ),
                     onClick = { onOpenMedication(med.id) },
                     onArchive = { vm.toggleArchived(med) },
                     onDelete = { pendingDelete = med },
@@ -278,8 +297,8 @@ private fun SortBar(mode: MedSortMode, onSort: (MedSortMode) -> Unit) {
             modifier = Modifier.align(Alignment.CenterVertically)
         )
         FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MedSortMode.entries.forEach { m ->
                 FilterChip(
@@ -342,6 +361,7 @@ private fun SampleTag() = StatusTag("示例")
 @Composable
 private fun MedicationCard(
     med: Medication,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onArchive: () -> Unit,
     onDelete: () -> Unit,
@@ -358,9 +378,9 @@ private fun MedicationCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        modifier = Modifier.alpha(if (med.archived) 0.6f else 1f)
+        modifier = modifier.alpha(if (med.archived) 0.6f else 1f)
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MedBadge(
                     iconIndex = med.iconIndex,
@@ -368,7 +388,7 @@ private fun MedicationCard(
                     content = palette.content(),
                     size = 46.dp
                 )
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -376,11 +396,11 @@ private fun MedicationCard(
                             style = MaterialTheme.typography.titleMedium
                         )
                         if (med.isSample) {
-                            Spacer(Modifier.width(6.dp))
+                            Spacer(Modifier.width(8.dp))
                             SampleTag()
                         }
                         if (paused) {
-                            Spacer(Modifier.width(6.dp))
+                            Spacer(Modifier.width(8.dp))
                             StatusTag("已暂停")
                         }
                     }
@@ -443,9 +463,9 @@ private fun MedicationCard(
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(end = 8.dp)
             ) {
                 med.times.take(4).forEach { t ->
@@ -511,7 +531,7 @@ private fun MedicationCard(
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(
                     progress = { (remaining / full).toFloat().coerceIn(0f, 1f) },
                     modifier = Modifier
@@ -607,7 +627,7 @@ private fun PauseDialog(
                         }
                     )
                 }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(16.dp))
                 Text(
                     "${formatResumeDate(until.toString())}恢复用药" +
                         "（暂停 ${ChronoUnit.DAYS.between(today, until) + 1} 天）",

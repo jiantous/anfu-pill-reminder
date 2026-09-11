@@ -70,10 +70,7 @@ fun AboutScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         }
     ) { padding ->
@@ -110,7 +107,7 @@ fun AboutScreen(
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 "取「安心服药」之意",
                 style = MaterialTheme.typography.bodySmall,
@@ -130,7 +127,7 @@ fun AboutScreen(
             ) {
                 Column(Modifier.padding(20.dp)) {
                     Text("隐私", style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         "没有网络权限，数据只存在这台手机上。",
                         style = MaterialTheme.typography.bodySmall,
@@ -138,7 +135,7 @@ fun AboutScreen(
                     )
                     Spacer(Modifier.height(24.dp))
                     Text("更新", style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         "新版本发布在 GitHub Releases 页。",
                         style = MaterialTheme.typography.bodySmall,
@@ -147,7 +144,7 @@ fun AboutScreen(
                     Spacer(Modifier.height(12.dp))
                     FilledTonalButton(
                         onClick = onOpenReleases,
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Filled.Update, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
@@ -155,17 +152,17 @@ fun AboutScreen(
                     }
 
                     Spacer(Modifier.height(24.dp))
-                    Text("提建议 / 报问题", style = MaterialTheme.typography.titleSmall)
+                    Text("建议", style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(12.dp))
                     FilledTonalButton(
                         onClick = onSendFeedback,
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Filled.MailOutline, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("发邮件反馈")
                     }
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         FEEDBACK_EMAIL,
                         style = MaterialTheme.typography.bodySmall,
@@ -176,7 +173,7 @@ fun AboutScreen(
 
                     Spacer(Modifier.height(24.dp))
                     Text("开源", style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         "代码完全公开，MIT 协议。欢迎查看或改进。",
                         style = MaterialTheme.typography.bodySmall,
@@ -185,7 +182,7 @@ fun AboutScreen(
                     Spacer(Modifier.height(12.dp))
                     FilledTonalButton(
                         onClick = onOpenProjectPage,
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Filled.Code, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
@@ -207,7 +204,7 @@ fun AboutScreen(
             ) {
                 Column(Modifier.padding(20.dp)) {
                     Text("免责说明", style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         "安服是辅助记录与提醒工具，不是医疗器械，不提供任何医疗建议。" +
                             "吃什么药、吃多少、吃多久，请完全遵照医生嘱咐和药品说明书。\n\n" +
