@@ -144,7 +144,7 @@ fun SettingsScreen(
             // ---- 界面 ----
             SettingsSection("界面") {
                 Text(
-                    "缩放整个界面（布局和文字一起），5% 一档。",
+                    "缩放整个界面。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
