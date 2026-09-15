@@ -141,7 +141,7 @@ class MainActivity : ComponentActivity() {
 
 private sealed class Dest(val route: String, val label: String) {
     data object Today : Dest("today", "今天")
-    data object Meds : Dest("meds", "我的药箱")
+    data object Meds : Dest("meds", "药箱")
     data object History : Dest("history", "统计")
     data object Edit : Dest("edit", "编辑")
     data object Scan : Dest("scan", "拍说明书")
@@ -344,8 +344,8 @@ private fun PillApp(relaunchSignal: Int = 0) {
                     title = {
                         Text(
                             when (route) {
-                                Dest.Meds.route -> "我的药箱"
-                                Dest.History.route -> "服药统计"
+                                Dest.Meds.route -> "药箱"
+                                Dest.History.route -> "统计"
                                 else -> "安服"
                             }
                         )

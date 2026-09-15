@@ -126,7 +126,7 @@ fun ReminderSetupScreen(
         if (!allGranted) {
             Spacer(Modifier.height(4.dp))
             Text(
-                "已完成 $doneCount / ${checks.size}。没设置的项以后可以在首页顶部再设。",
+                "已完成 $doneCount / ${checks.size}。未设置的选项可以在首页顶部再进行设置。",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth(),
