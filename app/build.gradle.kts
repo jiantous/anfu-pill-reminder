@@ -74,9 +74,14 @@ android {
         // 12 = 1.1.10 UI 规范化改造（仍是 Material 风格，无功能变更）：动效系统
         //             （tab 转场/列表弹簧动画/顶栏滚动收起/FAB 收起/完成庆祝）、
         //             药品 8 色跟随壁纸取色、错过卡片红边条、按钮回归 M3 默认 40dp、
-        //             间距收敛 4dp 网格、日历图例深浅区分、空状态文案统一
-        versionCode = 12
-        versionName = "1.1.10"
+        //             间距收敛 4dp 网格、日历图例深浅区分、空状态文案统一；
+        //             文案：底栏/顶栏「药箱」「统计」、引导页提示语
+        // 13 = 1.1.11 修复 1.1.10 的窗口 insets 双重避让：二三级页标题上方与
+        //             页面底部、主页面底栏下方各多一条空白带；
+        //             全部页面切换动画统一为水平滑移（tab 按左右顺序定向，
+        //             子页面进右返左），修复子页面返回无动画
+        versionCode = 13
+        versionName = "1.1.11"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

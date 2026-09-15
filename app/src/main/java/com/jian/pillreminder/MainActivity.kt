@@ -19,12 +19,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -338,6 +338,13 @@ private fun PillApp(relaunchSignal: Int = 0) {
     )
     CompositionLocalProvider(LocalDensity provides uiDensity) {
     Scaffold(
+        // 关掉外层 Scaffold 的 insets 避让，交给各页面自管：
+        // 根 tab 的状态栏/导航栏由 topBar/bottomBar 自己处理；
+        // 二三级页自带 Scaffold，若外层再垫一次 systemBars insets，
+        // 会出现"标题上方、页面底部各多一条空白"的双重避让。
+        // 底部同理：NavigationBar 自带 navigationBars 内衬（给手势条让位），
+        // Scaffold 若再垫一次，底栏下方就会多出一条空白带。
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             if (!isEditing) {
                 CenterAlignedTopAppBar(
@@ -361,7 +368,13 @@ private fun PillApp(relaunchSignal: Int = 0) {
         },
         bottomBar = {
             if (!isEditing) {
-                NavigationBar {
+                // 显式声明底栏要吃掉 navigationBars insets：edge-to-edge 下窗口
+                // 铺满全屏，NavigationBar 默认只画 80dp 标准高度，三键/手势栏
+                // 区域会露出窗口背景色，看起来像"底栏下方一条空白"。
+                // 声明后组件自动垫高到屏幕最底，内容仍避开系统栏。
+                NavigationBar(
+                    windowInsets = WindowInsets.navigationBars
+                ) {
                     NavigationBarItem(
                         selected = route == Dest.Today.route,
                         onClick = {
@@ -438,41 +451,66 @@ private fun PillApp(relaunchSignal: Int = 0) {
             }
         }
     ) { padding ->
-        // 转场规则：三个根 tab 之间是同级切换，用 fade + 轻微上浮（纯 fade 在
-        // 内容相近的列表之间观感接近闪切，加 4% 高度的上浮位移让它"有形"）；
-        // 进出编辑/设置等子页面用水平滑移，表达层级推进/返回。
-        // 注意判断用的是转场 scope 的 targetState（即将显示的路由），
-        // 而不是外层捕获的 route——后者在重组时机上和转场求值不同步。
-        val tabFade = 260
-        val pageSlide = 300
+        // 转场规则：三个根 tab 之间是同级切换，用纯 fade 且进出同时长——
+        // 转场规则：所有页面切换统一为水平滑移（与子页面效果一致）：
+        // tab 之间方向跟随底栏左右顺序——往右切内容左移、往左切反向；
+        // 子页面语义上是压在 tab 之上的层级：进入从右滑入，返回向右滑出。
+        // 注意判断用转场 scope 的 targetState/initialState（即将显示/即将离开
+        // 的路由），而不是外层捕获的 route——后者重组时机和转场求值不同步。
+        val slideMillis = 300
+        // 根 tab 的底栏顺序，索引差决定滑移方向
+        val tabOrder = listOf(Dest.Today.route, Dest.Meds.route, Dest.History.route)
+        fun tabIndex(r: String?): Int = tabOrder.indexOfFirst { r?.startsWith(it) == true }
         fun isChildRoute(r: String?): Boolean = r != null && (
             r.startsWith(Dest.Edit.route) || r.startsWith(Dest.Scan.route) ||
                 r.startsWith(Dest.Setup.route) || r.startsWith(Dest.Backup.route) ||
                 r.startsWith(Dest.Settings.route) || r.startsWith(Dest.About.route)
             )
+        /**
+         * 本场转场的内容移动符号：+1 = 新页从右侧来（内容整体左移），-1 = 从左侧来。
+         * 涉及子页面：前进(push)一律 +1、返回(pop)一律 -1。纯 tab 切换按底栏顺序。
+         * 0 = 方向判定不出（如首次进 startDestination），退化为纯 fade。
+         */
+        fun motionSign(target: String?, initial: String?, popping: Boolean): Int {
+            if (isChildRoute(target) || isChildRoute(initial)) return if (popping) -1 else 1
+            val ti = tabIndex(target); val ii = tabIndex(initial)
+            return when {
+                ti < 0 || ii < 0 || ti == ii -> 0
+                ti > ii -> 1
+                else -> -1
+            }
+        }
         NavHost(
             navController = nav,
             startDestination = Dest.Today.route,
             modifier = Modifier.padding(padding),
             enterTransition = {
-                if (isChildRoute(targetState.destination.route))
-                    slideInHorizontally(tween(pageSlide)) { it / 4 } + fadeIn(tween(pageSlide))
-                else fadeIn(tween(tabFade)) + slideInVertically(tween(tabFade)) { it / 24 }
+                when (motionSign(targetState.destination.route, initialState.destination.route, popping = false)) {
+                    1 -> slideInHorizontally(tween(slideMillis)) { it / 4 } + fadeIn(tween(slideMillis))
+                    -1 -> slideInHorizontally(tween(slideMillis)) { -it / 4 } + fadeIn(tween(slideMillis))
+                    else -> fadeIn(tween(slideMillis))
+                }
             },
             exitTransition = {
-                if (isChildRoute(targetState.destination.route))
-                    slideOutHorizontally(tween(pageSlide)) { -it / 4 } + fadeOut(tween(pageSlide))
-                else fadeOut(tween(tabFade / 2))
+                when (motionSign(targetState.destination.route, initialState.destination.route, popping = false)) {
+                    1 -> slideOutHorizontally(tween(slideMillis)) { -it / 4 } + fadeOut(tween(slideMillis))
+                    -1 -> slideOutHorizontally(tween(slideMillis)) { it / 4 } + fadeOut(tween(slideMillis))
+                    else -> fadeOut(tween(slideMillis))
+                }
             },
             popEnterTransition = {
-                if (isChildRoute(targetState.destination.route))
-                    slideInHorizontally(tween(pageSlide)) { -it / 4 } + fadeIn(tween(pageSlide))
-                else fadeIn(tween(tabFade))
+                when (motionSign(targetState.destination.route, initialState.destination.route, popping = true)) {
+                    1 -> slideInHorizontally(tween(slideMillis)) { it / 4 } + fadeIn(tween(slideMillis))
+                    -1 -> slideInHorizontally(tween(slideMillis)) { -it / 4 } + fadeIn(tween(slideMillis))
+                    else -> fadeIn(tween(slideMillis))
+                }
             },
             popExitTransition = {
-                if (isChildRoute(targetState.destination.route))
-                    slideOutHorizontally(tween(pageSlide)) { it / 4 } + fadeOut(tween(pageSlide))
-                else fadeOut(tween(tabFade / 2))
+                when (motionSign(targetState.destination.route, initialState.destination.route, popping = true)) {
+                    1 -> slideOutHorizontally(tween(slideMillis)) { -it / 4 } + fadeOut(tween(slideMillis))
+                    -1 -> slideOutHorizontally(tween(slideMillis)) { it / 4 } + fadeOut(tween(slideMillis))
+                    else -> fadeOut(tween(slideMillis))
+                }
             }
         ) {
             composable(Dest.Today.route) {
