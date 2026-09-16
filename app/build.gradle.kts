@@ -80,8 +80,13 @@ android {
         //             页面底部、主页面底栏下方各多一条空白带；
         //             全部页面切换动画统一为水平滑移（tab 按左右顺序定向，
         //             子页面进右返左），修复子页面返回无动画
-        versionCode = 13
-        versionName = "1.1.11"
+        // 14 = 1.1.12 M3E 动效深化：全勤庆祝弹性脉冲、柱状图逐根延迟生长、
+        //             统计页无数据演示柱；形状对齐官方五档（4/8/12/16/28）、
+        //             主按钮官方胶囊形；界面缩放滑杆修卡顿（拖动跟手、
+        //             松手才落盘）；删全勤弧光高光；
+        //             全项目代码清理（47 个未使用 import、死代码 PermissionBanner）
+        versionCode = 14
+        versionName = "1.1.12"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

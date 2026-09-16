@@ -3,12 +3,10 @@ package com.jian.pillreminder.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,14 +23,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Today
@@ -41,7 +36,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -56,11 +50,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,7 +67,6 @@ import androidx.compose.ui.unit.dp
 import com.jian.pillreminder.data.DoseStatus
 import com.jian.pillreminder.data.Medication
 import com.jian.pillreminder.domain.DoseItem
-import com.jian.pillreminder.domain.ScheduleEngine
 import com.jian.pillreminder.notify.Reminders
 import com.jian.pillreminder.ui.MedViewModel
 import com.jian.pillreminder.ui.components.CheckCircle
@@ -307,27 +297,16 @@ private fun ProgressSummary(taken: Int, total: Int) {
     // spring 拉回 1。回程会自然过冲到 1 以下再弹回，形成"鼓起→回落→微颤→静"
     // 的连续弹性，没有任何两段拼接（首版拼接正是"卡卡卡"的来源）。
     val pulse = remember { Animatable(1f) }
-    // 弧光进度：0→1 一次性匀速扫过
-    val shimmer = remember { Animatable(0f) }
     LaunchedEffect(allDone) {
         if (allDone) {
-            launch {
-                shimmer.snapTo(0f)
-                shimmer.animateTo(
-                    1f,
-                    animationSpec = tween(durationMillis = 900, easing = EaseOutCubic)
+            pulse.snapTo(1.05f)
+            pulse.animateTo(
+                1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
                 )
-            }
-            launch {
-                pulse.snapTo(1.05f)
-                pulse.animateTo(
-                    1f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                )
-            }
+            )
         }
     }
 
@@ -371,46 +350,17 @@ private fun ProgressSummary(taken: Int, total: Int) {
                 )
             }
             Spacer(Modifier.height(16.dp))
-            Box {
-                LinearProgressIndicator(
-                    progress = { animated },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(10.dp)
-                        .clip(CircleShape),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
-                    gapSize = 0.dp,
-                    drawStopIndicator = {}
-                )
-                // 全勤弧光：一道高光从左到右扫过进度条。
-                // 必须 drawBehind 且在 lambda 内读 shimmer.value——它构成快照读取，
-                // 动画每帧都会触发重绘。首版用 drawWithCache 捕获局部变量 head，
-                // 那不构成读取依赖，动画帧不重绘，光带从未出现（这就是"看不到"）。
-                val glow = MaterialTheme.colorScheme.onPrimaryContainer
-                Box(
-                    Modifier
-                        .matchParentSize()
-                        .clip(CircleShape)
-                        .drawBehind {
-                            val s = shimmer.value
-                            if (s !in 0.001f..0.999f) return@drawBehind
-                            val bandWidth = 0.4f // 光带宽度占进度条 40%
-                            val head = s * (1f + bandWidth)
-                            val tail = (head - bandWidth).coerceIn(0f, 1f)
-                            drawRect(
-                                Brush.linearGradient(
-                                    colorStops = arrayOf(
-                                        0f to Color.Transparent,
-                                        tail to Color.Transparent,
-                                        ((tail + head) / 2f).coerceAtMost(1f) to glow.copy(alpha = 0.9f),
-                                        head.coerceAtMost(1f) to Color.Transparent
-                                    )
-                                )
-                            )
-                        }
-                )
-            }
+            LinearProgressIndicator(
+                progress = { animated },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(CircleShape),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
+                gapSize = 0.dp,
+                drawStopIndicator = {}
+            )
         }
     }
 }

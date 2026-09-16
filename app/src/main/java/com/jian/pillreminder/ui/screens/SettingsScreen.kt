@@ -21,8 +21,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
@@ -31,11 +29,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -152,14 +148,15 @@ fun SettingsScreen(
                     Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 本地拖动值：拖动中即时预览（吸附到 5% 档），松手才落盘。
-                    // 直接把 uiScale 当 Slider 值的话，每次吸附都会回写数据文件。
+                    // 滑杆交互照搬示例范式：onValueChange 只更新本地值（拖动跟手），
+                    // onValueChangeFinished 松手才落盘——拖动过程中不写数据文件、
+                    // 不触发全 App 密度重组，这是之前卡顿的根因。
                     var dragging by remember(uiScale) { mutableFloatStateOf(uiScale) }
                     Slider(
                         value = dragging,
-                        onValueChange = { raw ->
-                            dragging = raw
-                            onUiScaleChange(snapUiScale(raw))
+                        onValueChange = { dragging = it },
+                        onValueChangeFinished = {
+                            onUiScaleChange(snapUiScale(dragging))
                         },
                         valueRange = UI_SCALE_MIN..UI_SCALE_MAX,
                         steps = ((UI_SCALE_MAX - UI_SCALE_MIN) / UI_SCALE_STEP).toInt() - 1,
