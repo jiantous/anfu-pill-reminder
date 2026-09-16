@@ -2,6 +2,8 @@ package com.jian.pillreminder.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -52,6 +54,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -283,8 +291,44 @@ private fun DateHeader(
 @Composable
 private fun ProgressSummary(taken: Int, total: Int) {
     val progress = if (total == 0) 0f else taken.toFloat() / total
-    val animated by animateFloatAsState(progress, label = "todayProgress")
+    // M3E：进度用带过冲的 spring，打卡瞬间进度条"弹到位"而不是匀速滑过去
+    val animated by animateFloatAsState(
+        progress,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "todayProgress"
+    )
     val allDone = total > 0 && taken == total
+
+    // 全勤庆祝：单一 Animatable 一次完整振动——snap 到峰值起点，再由低阻尼
+    // spring 拉回 1。回程会自然过冲到 1 以下再弹回，形成"鼓起→回落→微颤→静"
+    // 的连续弹性，没有任何两段拼接（首版拼接正是"卡卡卡"的来源）。
+    val pulse = remember { Animatable(1f) }
+    // 弧光进度：0→1 一次性匀速扫过
+    val shimmer = remember { Animatable(0f) }
+    LaunchedEffect(allDone) {
+        if (allDone) {
+            launch {
+                shimmer.snapTo(0f)
+                shimmer.animateTo(
+                    1f,
+                    animationSpec = tween(durationMillis = 900, easing = EaseOutCubic)
+                )
+            }
+            launch {
+                pulse.snapTo(1.05f)
+                pulse.animateTo(
+                    1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+            }
+        }
+    }
 
     Card(
         shape = MaterialTheme.shapes.large,
@@ -292,7 +336,12 @@ private fun ProgressSummary(taken: Int, total: Int) {
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = pulse.value
+                scaleY = pulse.value
+            }
     ) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -309,24 +358,58 @@ private fun ProgressSummary(taken: Int, total: Int) {
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
+                // 百分比数字跟卡片同一脉冲（同源振动，节奏一致）
                 Text(
                     "${(progress * 100).toInt()}%",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = 1f + (pulse.value - 1f) * 3f
+                        scaleY = 1f + (pulse.value - 1f) * 3f
+                    }
                 )
             }
             Spacer(Modifier.height(16.dp))
-            LinearProgressIndicator(
-                progress = { animated },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(10.dp)
-                    .clip(CircleShape),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
-                gapSize = 0.dp,
-                drawStopIndicator = {}
-            )
+            Box {
+                LinearProgressIndicator(
+                    progress = { animated },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(CircleShape),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
+                    gapSize = 0.dp,
+                    drawStopIndicator = {}
+                )
+                // 全勤弧光：一道高光从左到右扫过进度条。
+                // 必须 drawBehind 且在 lambda 内读 shimmer.value——它构成快照读取，
+                // 动画每帧都会触发重绘。首版用 drawWithCache 捕获局部变量 head，
+                // 那不构成读取依赖，动画帧不重绘，光带从未出现（这就是"看不到"）。
+                val glow = MaterialTheme.colorScheme.onPrimaryContainer
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .clip(CircleShape)
+                        .drawBehind {
+                            val s = shimmer.value
+                            if (s !in 0.001f..0.999f) return@drawBehind
+                            val bandWidth = 0.4f // 光带宽度占进度条 40%
+                            val head = s * (1f + bandWidth)
+                            val tail = (head - bandWidth).coerceIn(0f, 1f)
+                            drawRect(
+                                Brush.linearGradient(
+                                    colorStops = arrayOf(
+                                        0f to Color.Transparent,
+                                        tail to Color.Transparent,
+                                        ((tail + head) / 2f).coerceAtMost(1f) to glow.copy(alpha = 0.9f),
+                                        head.coerceAtMost(1f) to Color.Transparent
+                                    )
+                                )
+                            )
+                        }
+                )
+            }
         }
     }
 }
@@ -391,8 +474,33 @@ private fun DoseCard(
         label = "doseContainer"
     )
 
+    // M3E 打卡反馈：状态变为"已处理"（吃/跳）的瞬间，整卡弹性"颤"一下。
+    // 用 status 作 key 记忆上一态，只在 pending → taken/skipped 边沿触发，
+    // 反复进出的重组不会误弹；1→0.985→1 一次阻尼弹簧衰减，克制不晃眼。
+    var pressPulse by remember { mutableStateOf(false) }
+    val previousStatus = remember { mutableStateOf(item.status) }
+    LaunchedEffect(item.status) {
+        if (previousStatus.value == DoseStatus.PENDING && item.status != DoseStatus.PENDING) {
+            pressPulse = true
+            delay(180)
+            pressPulse = false
+        }
+        previousStatus.value = item.status
+    }
+    val cardScale by animateFloatAsState(
+        targetValue = if (pressPulse) 0.985f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "doseCardPulse"
+    )
+
     Card(
-        modifier = modifier,
+        modifier = modifier.graphicsLayer {
+            scaleX = cardScale
+            scaleY = cardScale
+        },
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = containerColor

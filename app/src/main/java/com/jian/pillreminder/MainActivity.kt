@@ -13,7 +13,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -71,6 +74,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -375,6 +379,9 @@ private fun PillApp(relaunchSignal: Int = 0) {
                 NavigationBar(
                     windowInsets = WindowInsets.navigationBars
                 ) {
+                    // 图标保持 M3 默认行为（filled/outlined 切换）。曾试过选中
+                    // 弹簧缩放（0.7→1.0 过冲），实测意义不大且未选中缩小后
+                    // 观感突兀，已按用户要求撤销。
                     NavigationBarItem(
                         selected = route == Dest.Today.route,
                         onClick = {

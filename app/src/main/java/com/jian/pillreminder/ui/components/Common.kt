@@ -25,7 +25,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Canvas
+import kotlinx.coroutines.delay
 import com.jian.pillreminder.ui.theme.ExpressiveSpring
 
 // 药品图标集见 MedIconSet.kt（按剂型分类的手绘矢量）
@@ -215,7 +224,7 @@ fun CheckCircle(
     }
 }
 
-/** 一行水平柱状图，用于每周依从率。M3 Expressive：圆角顶 + 弹性动画。 */
+/** 一行水平柱状图，用于每周依从率。M3 Expressive：staggered 弹性生长 + 圆角顶。 */
 @Composable
 fun MiniBarChart(
     values: List<Float>,
@@ -230,10 +239,20 @@ fun MiniBarChart(
         verticalAlignment = Alignment.Bottom
     ) {
         values.forEachIndexed { i, v ->
+            // M3E staggered：每根柱延迟 55ms 启动，波形从左到右依次长起来，
+            // 比全体同频齐动更有节奏感。值不变的柱不重放动画（key 稳定）。
+            var started by remember(values) { mutableStateOf(false) }
+            LaunchedEffect(values) {
+                delay(55L * i)
+                started = true
+            }
             val animatedH by animateFloatAsState(
-                targetValue = (88 * v.coerceIn(0f, 1f)),
-                animationSpec = ExpressiveSpring,
-                label = "barH"
+                targetValue = if (started) (88 * v.coerceIn(0f, 1f)) else 0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                ),
+                label = "barH$i"
             )
             Column(
                 modifier = Modifier.weight(1f),
