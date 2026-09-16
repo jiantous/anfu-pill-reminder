@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -559,7 +560,7 @@ private fun DoseCard(
                         if (med.isSample) {
                             Spacer(Modifier.width(8.dp))
                             Surface(
-                                shape = RoundedCornerShape(6.dp),
+                                shape = MaterialTheme.shapes.extraSmall,
                                 color = MaterialTheme.colorScheme.tertiaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                             ) {
@@ -605,7 +606,7 @@ private fun DoseCard(
             if (med.note.isNotBlank() && !isTaken && !isSkipped) {
                 Spacer(Modifier.height(8.dp))
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
+                    shape = MaterialTheme.shapes.small,
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                 ) {
                     Text(
@@ -643,7 +644,11 @@ private fun DoseCard(
                         Text("跳过")
                     }
                     Spacer(Modifier.width(4.dp))
-                    FilledTonalButton(onClick = onToggle) {
+                    FilledTonalButton(
+                        onClick = onToggle,
+                        // M3E 官方胶囊形状（ButtonDefaults.shape = CornerFull）
+                        shape = ButtonDefaults.shape
+                    ) {
                         Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("已服用")

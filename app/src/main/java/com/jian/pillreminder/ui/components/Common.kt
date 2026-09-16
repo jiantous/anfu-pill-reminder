@@ -104,7 +104,7 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerHighest,
             modifier = Modifier.size(96.dp)
         ) {
@@ -262,7 +262,7 @@ fun MiniBarChart(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(88.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(MaterialTheme.shapes.small)
                         .background(trackColor),
                     contentAlignment = Alignment.BottomCenter
                 ) {
@@ -273,7 +273,7 @@ fun MiniBarChart(
                                 .height(if (animatedH < 4f && v > 0f) 4.dp else animatedH.dp)
                                 // 只有顶部圆角：柱子底边要贴住基线，底部圆角会让
                                 // 柱子看起来"浮"在轨道上（贴基线原则）
-                                .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                                .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
                                 .background(barColor)
                         )
                     }

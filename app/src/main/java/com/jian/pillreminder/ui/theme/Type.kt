@@ -102,13 +102,13 @@ val PillTypography = Typography(
     )
 )
 
-// material3 1.4.0 的 MaterialExpressiveTheme 仍是 internal API（见 Theme.kt 注释），
-// 这里手写 M3 Expressive 形状规范：组件层级差异更大、按钮圆角显著大于容器，
-// 是 Expressive "大圆角按钮" 观感的来源。
+// 形状五档对齐官方 ShapeTokens（4/8/12/16/28dp，见 material3 1.5.0-alpha28
+// tokens/ShapeTokens.kt）。曾自定 8/12/20/28/36——卡片(large)与对话框(extraLarge)
+// 同为 28dp，层级拉不开；官方本意是对话框(28) > 卡片，改回官方值后层级回归。
 val PillShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(20.dp),
-    large = RoundedCornerShape(28.dp),
-    extraLarge = RoundedCornerShape(36.dp)
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(28.dp)
 )

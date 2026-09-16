@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.NoPhotography
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -302,7 +303,7 @@ private fun CameraPane(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = MaterialTheme.shapes.medium,
                     color = Color.Black.copy(alpha = 0.55f)
                 ) {
                     Text(
@@ -316,7 +317,7 @@ private fun CameraPane(
                 (errorMsg ?: bindError)?.let { msg ->
                     Spacer(Modifier.height(8.dp))
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.errorContainer
                     ) {
                         Text(
@@ -336,7 +337,7 @@ private fun CameraPane(
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(horizontal = 20.dp)
-                    .border(2.dp, Color.White.copy(alpha = 0.75f), RoundedCornerShape(16.dp))
+                    .border(2.dp, Color.White.copy(alpha = 0.75f), MaterialTheme.shapes.large)
             )
 
             // ---- 操作区 ----
@@ -595,6 +596,7 @@ private fun ResultPane(
             }
             Button(
                 onClick = onUse,
+                shape = ButtonDefaults.shape,
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Filled.Check, null, Modifier.size(18.dp))

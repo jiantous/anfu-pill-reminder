@@ -345,7 +345,7 @@ private fun StatusTag(
     container: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.tertiaryContainer,
     content: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onTertiaryContainer
 ) {
-    Surface(shape = RoundedCornerShape(6.dp), color = container, contentColor = content) {
+    Surface(shape = MaterialTheme.shapes.extraSmall, color = container, contentColor = content) {
         Text(
             text,
             style = MaterialTheme.typography.labelSmall,

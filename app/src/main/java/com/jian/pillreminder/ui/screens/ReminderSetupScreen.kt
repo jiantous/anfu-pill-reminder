@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -119,6 +120,7 @@ fun ReminderSetupScreen(
         Spacer(Modifier.height(28.dp))
         Button(
             onClick = onDone,
+            shape = ButtonDefaults.shape,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (allGranted) "全部就绪，开始使用" else "先这样，进入应用")

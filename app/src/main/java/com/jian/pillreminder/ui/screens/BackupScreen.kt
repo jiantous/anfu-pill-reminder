@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -114,6 +115,7 @@ fun BackupScreen(
                     Button(
                         onClick = onBackup,
                         enabled = !busy,
+                        shape = ButtonDefaults.shape,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Filled.CloudUpload, null, Modifier.size(18.dp))

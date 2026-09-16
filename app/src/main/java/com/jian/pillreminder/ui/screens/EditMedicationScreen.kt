@@ -34,6 +34,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -625,6 +626,7 @@ fun EditMedicationScreen(
             Spacer(Modifier.height(20.dp))
             FilledTonalButton(
                 onClick = { commit() },
+                shape = ButtonDefaults.shape,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Filled.Check, null)
