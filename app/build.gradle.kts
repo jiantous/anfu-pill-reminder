@@ -17,11 +17,13 @@ plugins {
  *   1. 环境变量 PILL_KEYSTORE_PROPS，指向 keystore.properties 的完整路径
  *   2. 仓库同级的 AndroidKeys/keystore.properties
  *   3. 用户主目录下的 AndroidKeys/keystore.properties
+ *   4. 用户主目录下 Projects/AndroidKeys/keystore.properties
  */
 val keystorePropsFile: File = listOfNotNull(
     System.getenv("PILL_KEYSTORE_PROPS")?.let { File(it) },
     rootProject.file("../AndroidKeys/keystore.properties"),
-    File(System.getProperty("user.home"), "AndroidKeys/keystore.properties")
+    File(System.getProperty("user.home"), "AndroidKeys/keystore.properties"),
+    File(System.getProperty("user.home"), "Projects/AndroidKeys/keystore.properties")
 ).firstOrNull { it.isFile } ?: File("keystore.properties.absent")
 
 val keystoreProps = Properties()
