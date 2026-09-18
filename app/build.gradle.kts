@@ -112,8 +112,9 @@ android {
                 storePassword = keystoreProps.getProperty("storePassword")
                 keyAlias = keystoreProps.getProperty("keyAlias")
                 keyPassword = keystoreProps.getProperty("keyPassword")
-                // 同时启用 v1/v2/v3：v1 兼容老系统，v2/v3 是现代校验方式
-                enableV1Signing = true
+                // v2/v3 双开：v2 覆盖 Android 7+，v3 覆盖 Android 9+（含密钥轮换），
+                // 老设备用 v2、新设备用 v3，全版本可装。
+                // v1 只对 Android 6- 有意义，minSdk 24 用不到，AGP 已默认不产。
                 enableV2Signing = true
                 enableV3Signing = true
             }
