@@ -159,7 +159,10 @@ fun SettingsScreen(
                             onUiScaleChange(snapUiScale(dragging))
                         },
                         valueRange = UI_SCALE_MIN..UI_SCALE_MAX,
-                        steps = ((UI_SCALE_MAX - UI_SCALE_MIN) / UI_SCALE_STEP).toInt() - 1,
+                        // 80%~130% 共 5%×10 段，中间刻度 9 个。必须 round：
+                        // (MAX-MIN)/STEP 走 float 是 9.99999，toInt 截成 9 再减 1
+                        // 得 8，刻度错位把 105% 那档吞掉了。
+                        steps = kotlin.math.round((UI_SCALE_MAX - UI_SCALE_MIN) / UI_SCALE_STEP).toInt() - 1,
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(Modifier.width(12.dp))
