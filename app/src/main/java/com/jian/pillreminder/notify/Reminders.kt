@@ -1,6 +1,7 @@
 package com.jian.pillreminder.notify
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
@@ -181,10 +182,20 @@ object Reminders {
 
         val scheduled = mutableListOf<TimeOfDay>()
         val now = LocalDateTime.now()
+        // 被「临时改时间」挪走的某次不排常规槽——它的新时刻已由延后槽负责。
+        // 不跳过的话，改完时间回一次前台（rescheduleAll），原时刻的常规闹钟就复活了，
+        // 又回到"原时刻照响 + 新时刻记录被误删"的老 bug。
+        // 按"下一次发生日"查 override：今天改的查今天、明天改的查明天，天然覆盖
+        // 任意日期（查看昨天时改的不会匹配到未来的 next，不受影响）。
+        val overrides = MedRepository.get(context).data.value.doseOverrides
+            .filter { it.medicationId == med.id }
         for (time in med.times) {
             // 针对每个时刻单独找它的下一次发生日
             val single = med.copy(times = listOf(time))
             val next = ScheduleEngine.nextOccurrence(single, now) ?: continue
+            // "下一次"那次已被挪走 → 让位给延后槽
+            val nextDate = next.toLocalDate().toString()
+            if (overrides.any { it.date == nextDate && it.originalTime == time }) continue
             val triggerAt = ScheduleEngine.toEpochMillis(next)
 
             val pi = PendingIntent.getBroadcast(
@@ -205,6 +216,32 @@ object Reminders {
             if (ok) scheduled += time
         }
         setScheduledTimes(context, med.id, scheduled)
+        // 撤掉延后槽后立即原位重建，不把责任推给 rescheduleAll。
+        // 否则 scheduleFor 的任何调用方（编辑/归档/暂停/广播触发）只要没跟跑
+        // rescheduleAll，就会把正在排队的「稍后提醒 / 临时改时间」闹钟静默撤掉。
+        rearmDeferredFor(context, med)
+    }
+
+    /**
+     * 重建某种药的延后闹钟槽（稍后提醒 / 临时改时间）。
+     *
+     * [scheduleFor] 开头的 [cancelFor] 会把延后槽一起撤掉。旧设计靠
+     * [rescheduleAll] 在回到前台 / 每 6 小时守护任务里重建，但 [scheduleFor]
+     * 不少调用方（编辑保存、归档切换、暂停、广播触发）不跟跑 rescheduleAll，
+     * 导致「稍后提醒」被静默撤掉、时机不可控。改成 scheduleFor 撤完立即原位重建，
+     * 让「撤光 → 排常规 → 补齐延后」成为 scheduleFor 自身不变量。
+     *
+     * 不该响的药由 [armDeferred] 统一拦截，这里不做重复判断。
+     */
+    private fun rearmDeferredFor(context: Context, med: Medication) {
+        val repo = MedRepository.get(context)
+        val now = System.currentTimeMillis()
+        // 已经过期（设备睡过头）的不再补——错过就是错过了，跟原设计一致。
+        for (d in repo.data.value.deferredReminders) {
+            if (d.medicationId != med.id) continue
+            if (d.triggerAtMillis <= now) continue
+            armDeferred(context, med, d.originalTime, d.date, d.triggerAtMillis)
+        }
     }
 
     /**
@@ -292,6 +329,10 @@ object Reminders {
      *
      * 注意 [time] 始终是**原定时刻**——它是这次服药的身份，DoseLog 与通知 id 都靠它。
      * 只有触发时间变了。
+     *
+     * 必须撤掉原时刻的常规闹钟槽：不撤的话，原时刻到点照响一次；且那次 FIRE 会按
+     * （date, 原时刻）身份把这里的延后记录删掉——新时刻的提醒就被原时刻的闹钟
+     * 亲手掐灭了。
      */
     fun rescheduleOneDose(
         context: Context,
@@ -300,25 +341,52 @@ object Reminders {
         date: String,
         newTime: TimeOfDay
     ) {
+        val doseDate = runCatching { java.time.LocalDate.parse(date) }.getOrNull()
+            ?: java.time.LocalDate.now()
         val triggerAt = ScheduleEngine.toEpochMillis(
-            LocalDateTime.of(
-                runCatching { java.time.LocalDate.parse(date) }.getOrNull()
-                    ?: java.time.LocalDate.now(),
-                java.time.LocalTime.of(newTime.hour, newTime.minute)
-            )
+            LocalDateTime.of(doseDate, java.time.LocalTime.of(newTime.hour, newTime.minute))
         )
         val repo = MedRepository.get(context)
         repo.setDoseOverride(med.id, date, time, newTime)
         repo.putDeferredReminder(DeferredReminder(med.id, date, time, triggerAt))
+        // 撤常规槽前先确认：这个时刻的槽位上挂的"下一次"恰好就是被改的这次
+        // （scheduleFor 每个时刻只排一个闹钟）。槽里挂的是别的日子（比如改的是
+        // 后天、槽里是明天）就不能撤——撤了会把没被改的那次误杀。
+        val next = ScheduleEngine.nextOccurrence(med.copy(times = listOf(time)), LocalDateTime.now())
+        if (next != null && next.toLocalDate() == doseDate) {
+            cancelRegularSlot(context, med.id, time)
+        }
         armDeferred(context, med, time, date, triggerAt)
     }
 
-    /** 撤销临时改时间，回到原定时刻。 */
+    /**
+     * 撤销临时改时间，回到原定时刻。
+     *
+     * 撤销时原时刻的常规槽已在 [rescheduleOneDose] 里被撤掉，若原时刻还没过、
+     * 撤掉延后槽后今天原时刻就不响了——所以要把常规槽排回来。
+     * 走一遍 [scheduleFor] 让它按 nextOccurrence 自行判断（已过的时刻自然不会排）。
+     */
     fun clearOneDoseReschedule(context: Context, med: Medication, time: TimeOfDay, date: String) {
         val repo = MedRepository.get(context)
         repo.setDoseOverride(med.id, date, time, null)
         repo.removeDeferredReminder(med.id, date, time)
         cancelDeferred(context, med.id, time)
+        scheduleFor(context, med)
+    }
+
+    /** 撤掉某一次服药的常规闹钟槽（临时改时间后，原时刻不该再响）。 */
+    private fun cancelRegularSlot(context: Context, medId: String, time: TimeOfDay) {
+        val am = context.getSystemService(AlarmManager::class.java) ?: return
+        val pi = PendingIntent.getBroadcast(
+            context,
+            requestCode(medId, time),
+            Intent(context, ReminderReceiver::class.java).apply { action = ACTION_FIRE },
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        if (pi != null) {
+            am.cancel(pi)
+            pi.cancel()
+        }
     }
 
     /**
@@ -339,6 +407,9 @@ object Reminders {
     ) {
         if (triggerAtMillis <= System.currentTimeMillis()) return
         if (med.isSample || med.archived || !med.remindersEnabled) return
+        // 暂停期不排：改时间/稍后提醒后又设了暂停，延后闹钟不该在暂停期复活。
+        // 即便漏排，到点时 Receiver 的 isPausedOn 兜底也会拦，这里只是提前拦下。
+        if (ScheduleEngine.isPausedNow(med)) return
         val am = context.getSystemService(AlarmManager::class.java) ?: return
         val pi = PendingIntent.getBroadcast(
             context,
@@ -456,6 +527,9 @@ object Reminders {
     }
 
     /** 恢复闹钟到点时弹出"今天恢复用药"通知。 */
+    // MissingPermission 是误报：函数开头已用 hasNotificationPermission 检查过，
+    // Lint 无法跨函数推断，显式压掉。
+    @SuppressLint("MissingPermission")
     fun showResumeNotification(context: Context, med: Medication) {
         ensureChannels(context)
         if (!hasNotificationPermission(context)) return
@@ -482,6 +556,8 @@ object Reminders {
 
     private fun notificationId(medId: String, time: TimeOfDay): Int = requestCode(medId, time)
 
+    // 同 showResumeNotification：权限已在函数开头检查，压掉 Lint 误报。
+    @SuppressLint("MissingPermission")
     fun showDoseNotification(context: Context, med: Medication, time: TimeOfDay, date: String) {
         ensureChannels(context)
         if (!hasNotificationPermission(context)) {
@@ -576,6 +652,8 @@ object Reminders {
         runCatching { nm.cancel(med.id.hashCode() and 0x0FFFFFFF) }
     }
 
+    // 同 showResumeNotification：权限已在函数开头检查，压掉 Lint 误报。
+    @SuppressLint("MissingPermission")
     fun showStockAlert(context: Context, med: Medication) {
         ensureChannels(context)
         if (!hasNotificationPermission(context)) return

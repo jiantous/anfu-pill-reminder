@@ -256,24 +256,9 @@ private fun WeeklyChart(vm: MedViewModel) {
         Column(Modifier.fillMaxWidth().padding(20.dp)) {
             Text("最近 7 天完成度", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(16.dp))
-            // 无真实记录时展示一组演示柱——既让新用户看到图表长什么样，
-            // 也让动效（staggered 生长）在空数据时依然可感知
-            val noData = values.all { it == 0f }
-            val demoValues = listOf(0.9f, 0.7f, 1f, 0.85f, 0.6f, 0.95f, 0.8f)
-            MiniBarChart(
-                values = if (noData) demoValues else values,
-                labels = labels,
-                barColor = if (noData) MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-                else MaterialTheme.colorScheme.primary
-            )
-            if (noData) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "演示数据 · 开始打卡后显示你的真实记录",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            // 直接画真实数据。没有打卡记录时各区全是 0，柱状图自然显示一排空柱，
+            // 这是正常的空数据表现，不需要演示数据也不需要引导文案。
+            MiniBarChart(values = values, labels = labels)
         }
     }
 }

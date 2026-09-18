@@ -85,8 +85,17 @@ android {
         //             主按钮官方胶囊形；界面缩放滑杆修卡顿（拖动跟手、
         //             松手才落盘）；删全勤弧光高光；
         //             全项目代码清理（47 个未使用 import、死代码 PermissionBanner）
-        versionCode = 14
-        versionName = "1.1.12"
+        // 15 = 1.1.13 修复临时改时间：原时刻照响且新时刻提醒被误删（改时间后
+        //             撤原时刻常规闹钟槽、scheduleFor 按"下一次发生日"跳过被挪
+        //             走的时刻，任意日期生效）；撤销改时间后原时刻闹钟恢复；
+        //             修复稍后提醒被编辑/归档/暂停静默撤掉（scheduleFor 撤完
+        //             延后槽立即原位重建）；暂停期不再复活延后闹钟；
+        //             修复 Android 7.x(API 24/25) 落盘静默失败丢数据
+        //             （Files.move 需 API 26，改同目录 renameTo 原子替换）；
+        //             写盘加序号防异步乱序盖盘；OCR 识别器用后释放；
+        //             统计页删演示柱；清理死代码与多余 import
+        versionCode = 15
+        versionName = "1.1.13"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -142,7 +151,9 @@ android {
      * 按 CPU 架构拆分 APK。
      * OCR 引擎（libmlkit_google_ocr_pipeline.so）每个架构约 10MB，四份塞在一起
      * 就占了 39MB，而任何一台手机只会用其中一份。拆开后 arm64 版约 20MB。
-     * universalApk 仍生成一个全架构包，作为"不知道对方手机是什么"时的兜底。
+     *
+     * 发布原则：GitHub Release 只上传 arm64-v8a 包（现代安卓手机的主流架构），
+     * 其余架构包仅供本地调试/模拟器使用，不上传。universalApk 作为兜底同样只留本地。
      */
     splits {
         abi {

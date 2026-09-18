@@ -50,11 +50,6 @@ object ReminderHealth {
         armedTodayCheck(context)
     )
 
-    /** 全部就绪时不再打扰用户。 */
-    fun allGranted(context: Context): Boolean = checks(context).all { it.granted }
-
-    fun pendingChecks(context: Context): List<Check> = checks(context).filterNot { it.granted }
-
     // ---- 1. 通知权限 ----
 
     private fun notificationCheck(context: Context) = Check(

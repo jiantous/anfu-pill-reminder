@@ -33,6 +33,16 @@ class MedRepository private constructor(private val file: File) {
     private val fileLock = Any()
 
     /**
+     * 写盘序号。给每次异步写一个递增序号，落盘时只写"最新那一次"的快照。
+     *
+     * 不这么做，两个连续的异步写可能乱序落盘：旧快照最后盖盘，进程在被回收前
+     * 没写完队列的话，重启就会读到丢数据的旧版本。服药提醒常见广播短进程，
+     * 这个窗口不能赌。用 AtomicLong：当前 update 都由主线程发起，但原子自增
+     * 让"以后有人从后台线程调"也不会分配出重复序号。
+     */
+    private val writeSeq = java.util.concurrent.atomic.AtomicLong(0L)
+
+    /**
      * 读盘失败时置为 true，此后一切写操作都被拒绝。
      *
      * 用意是"宁可不保存，也不能覆盖"：磁盘上那份文件也许还能人工救回来，
@@ -43,9 +53,6 @@ class MedRepository private constructor(private val file: File) {
 
     private val _data = MutableStateFlow(AppData())
     val data: StateFlow<AppData> = _data.asStateFlow()
-
-    /** 数据是否处于只读保护模式（读盘失败）。UI 可以据此提示用户。 */
-    val isReadOnly: Boolean get() = loadFailed
 
     /**
      * 读盘。**解析失败绝不能当成"全新安装"**——那会让后续任何一次写操作
@@ -159,15 +166,15 @@ class MedRepository private constructor(private val file: File) {
                 out.fd.sync()
             }
 
-            // 原子替换。Files.move 带 ATOMIC_MOVE 语义比 File.renameTo 明确，
-            // 失败会抛异常而不是返回 false 被忽略。
-            java.nio.file.Files.move(
-                tmp.toPath(),
-                file.toPath(),
-                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                java.nio.file.StandardCopyOption.ATOMIC_MOVE
-            )
-        }.onFailure { android.util.Log.e("PillRepo", "写入数据失败", it) }
+            // 原子替换。tmp 与 file 同目录、同文件系统，renameTo 是原子覆盖，
+            // 且不依赖 API 26 的 java.nio.Files（minSdk 24 也能正确落盘）。
+            // 失败要显式抛出来让 runCatching 记录，绝不静默吞掉数据写丢。
+            if (!tmp.renameTo(file)) throw java.io.IOException("原子替换失败: ${tmp.name}")
+        }.onFailure {
+            // 清掉残留的 tmp（几 KB 的半成品），别让它在目录里越积越乱
+            runCatching { File(file.parentFile, "${file.name}.tmp").delete() }
+            android.util.Log.e("PillRepo", "写入数据失败", it)
+        }
     }
 
     private fun persist(snapshot: AppData, sync: Boolean) {
@@ -179,10 +186,20 @@ class MedRepository private constructor(private val file: File) {
         if (sync) {
             // BroadcastReceiver 场景：onReceive 返回后进程可能立刻被回收，
             // 异步写会丢数据，必须在返回前落盘。
-            synchronized(fileLock) { writeToDisk(snapshot) }
+            synchronized(fileLock) {
+                writeToDisk(snapshot)
+                // 把排队中的异步写作废：它们落的是更旧快照，盖掉这次同步写就丢了数据。
+                writeSeq.incrementAndGet()
+            }
         } else {
-            // 和同步写争同一把锁，避免两条路径同时改同一个文件
-            scope.launch { synchronized(fileLock) { writeToDisk(snapshot) } }
+            // 和同步写争同一把锁，避免两条路径同时改同一个文件。
+            // 只写序号最新的那次快照，旧的直接丢弃，保证落盘顺序与更新顺序一致。
+            val seq = writeSeq.incrementAndGet()
+            scope.launch {
+                synchronized(fileLock) {
+                    if (seq == writeSeq.get()) writeToDisk(snapshot)
+                }
+            }
         }
     }
 

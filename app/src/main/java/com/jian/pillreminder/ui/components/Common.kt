@@ -32,7 +32,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.animateFloatAsState
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +46,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Canvas
-import kotlinx.coroutines.delay
 import com.jian.pillreminder.ui.theme.ExpressiveSpring
 
 // 药品图标集见 MedIconSet.kt（按剂型分类的手绘矢量）
@@ -78,17 +76,6 @@ fun MedBadge(
             modifier = Modifier.size(size * 0.74f)
         )
     }
-}
-
-/** 分区小标题。 */
-@Composable
-fun SectionHeader(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp)
-    )
 }
 
 /** 空状态占位。M3 Expressive：更大的图标底、更柔和的间距。 */
@@ -315,9 +302,3 @@ fun GroupLabel(
         )
     }
 }
-
-@Composable
-fun VerticalSpacer(height: Dp) = Spacer(Modifier.height(height))
-
-@Composable
-fun HorizontalSpacer(width: Dp) = Spacer(Modifier.width(width))

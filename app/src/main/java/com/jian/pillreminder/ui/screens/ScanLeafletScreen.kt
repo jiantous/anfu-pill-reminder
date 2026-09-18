@@ -206,6 +206,8 @@ fun ScanLeafletScreen(
                         imageCapture.takePicture(
                             ContextCompat.getMainExecutor(context),
                             object : ImageCapture.OnImageCapturedCallback() {
+                                // proxy.image 是 CameraX 实验性 API，这里显式 OptIn
+                                @androidx.camera.core.ExperimentalGetImage
                                 override fun onCaptureSuccess(proxy: ImageProxy) {
                                     scope.launch {
                                         runCatching {
@@ -249,6 +251,13 @@ private suspend fun recognizeText(image: InputImage): List<String> =
         val recognizer = TextRecognition.getClient(
             ChineseTextRecognizerOptions.Builder().build()
         )
+        // 用完必须 close：中文识别模型占几十 MB 内存，每次拍照都 new 一个不关，
+        // 反复扫描会持续累积甚至 OOM。成功、失败、协程取消三条路都要释放。
+        cont.invokeOnCancellation { runCatching { recognizer.close() } }
+        fun releaseAnd(action: () -> Unit) {
+            runCatching { recognizer.close() }
+            runCatching(action)
+        }
         recognizer.process(image)
             .addOnSuccessListener { visionText ->
                 val lines = visionText.textBlocks
@@ -256,12 +265,12 @@ private suspend fun recognizeText(image: InputImage): List<String> =
                     .map { it.text.trim() }
                     .filter { it.isNotBlank() }
                 if (lines.isEmpty()) {
-                    cont.resumeWithException(IllegalStateException("画面中没有识别到文字"))
+                    releaseAnd { cont.resumeWithException(IllegalStateException("画面中没有识别到文字")) }
                 } else {
-                    cont.resume(lines)
+                    releaseAnd { cont.resume(lines) }
                 }
             }
-            .addOnFailureListener { cont.resumeWithException(it) }
+            .addOnFailureListener { e -> releaseAnd { cont.resumeWithException(e) } }
     }
 
 @Composable
