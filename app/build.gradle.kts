@@ -96,8 +96,16 @@ android {
         //             （Files.move 需 API 26，改同目录 renameTo 原子替换）；
         //             写盘加序号防异步乱序盖盘；OCR 识别器用后释放；
         //             统计页删演示柱；清理死代码与多余 import
-        versionCode = 15
-        versionName = "1.1.13"
+        // 16 = 1.1.14 修复到点不自动变"已错过"（前台每分钟刷新判定）；
+        //             编辑药品结束日期不再默认一个月，开关打开必须明确选
+        //             日期才能保存；剂量最小按 1，防 0 剂量让库存进度条
+        //             除 0 异常；库存进度条满格改按未来 30 天实际用量计算；
+        //             拍照识别加扫描光带与快门反馈，识别中禁点快门；
+        //             文案间距统一（剩 30 粒、预计 X 用完）；
+        //             加药页说明字号统一、新增分组导航条；
+        //             今日页/药箱页重复列表代码合并，净减约 110 行
+        versionCode = 16
+        versionName = "1.1.14"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
