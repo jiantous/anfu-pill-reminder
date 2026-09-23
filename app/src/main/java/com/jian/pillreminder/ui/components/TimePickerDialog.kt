@@ -85,9 +85,12 @@ fun TimePickerDialog(
                     )
                 }
                 Spacer(Modifier.height(8.dp))
+                // 24 小时制不是所有人都习惯，把"下午 8 点"这种说法也写出来。
+                // null 检查触发智能转换，替代原来的 !!
+                val clockText = if (h != null && m != null && error == null)
+                    "也就是 ${describeClock(h, m)}" else "24 小时制，例如 20 时 30 分"
                 Text(
-                    // 24 小时制不是所有人都习惯，把"下午 8 点"这种说法也写出来
-                    if (valid) "也就是 ${describeClock(h!!, m!!)}" else "24 小时制，例如 20 时 30 分",
+                    clockText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -103,7 +106,10 @@ fun TimePickerDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { if (valid) onConfirm(h!!, m!!) },
+                onClick = {
+                    // 同上：null 检查触发智能转换
+                    if (h != null && m != null && error == null) onConfirm(h, m)
+                },
                 enabled = valid
             ) { Text("确定") }
         },

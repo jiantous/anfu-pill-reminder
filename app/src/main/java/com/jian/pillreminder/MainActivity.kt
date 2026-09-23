@@ -501,7 +501,6 @@ private fun PillApp(relaunchSignal: Int = 0) {
                 TodayScreen(
                     vm = vm,
                     modifier = Modifier.nestedScroll(topBarScrollBehavior.nestedScrollConnection),
-                    onAddMedication = { editingId = null; nav.navigate(Dest.Edit.route) },
                     onOpenMedication = { id -> editingId = id; nav.navigate(Dest.Edit.route) },
                     permissionBanner = run {
                         val pending = healthChecks.filterNot { it.granted }

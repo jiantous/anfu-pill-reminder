@@ -14,6 +14,7 @@ import com.jian.pillreminder.data.TimeOfDay
 import com.jian.pillreminder.domain.DoseItem
 import com.jian.pillreminder.domain.ScheduleEngine
 import com.jian.pillreminder.notify.Reminders
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
@@ -35,9 +38,25 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
-    /** 用于把"错过"判定刷新，每次 UI 主动调用 refreshNow() 时更新。 */
+    /**
+     * 用于把"错过"判定刷新。除了 UI 在 ON_RESUME 时主动调用 refreshNow()，
+     * 还有一个前台每分钟走一次的心跳：否则 App 挂在前台不动、正好跨过服药
+     * 时刻，卡片不会从"待服用"变"已错过"——那正是最需要它变的时候。
+     */
     private val _now = MutableStateFlow(LocalDateTime.now())
     val now: StateFlow<LocalDateTime> = _now.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            while (true) {
+                // 对齐到下一分钟整点再醒：误差不超过半秒，且大部分时间在睡觉
+                val nextMinute = LocalDateTime.now().plusMinutes(1)
+                    .withSecond(0).withNano(0)
+                delay(Duration.between(LocalDateTime.now(), nextMinute).toMillis())
+                _now.value = LocalDateTime.now()
+            }
+        }
+    }
 
     val dosesForSelectedDate: StateFlow<List<DoseItem>> =
         combine(repo.data, _selectedDate) { d, date ->

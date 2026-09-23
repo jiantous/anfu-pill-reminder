@@ -18,6 +18,9 @@ import java.time.LocalDate
 
 class BackupManagerTest {
 
+    /** 测试用的宽松 Json：忽略未知字段（旧版本份前向兼容场景）。类级复用，避免每个用例重建。 */
+    private val lenientJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
     private fun med(id: String, name: String) = Medication(
         id = id,
         name = name,
@@ -89,8 +92,7 @@ class BackupManagerTest {
         val old = """
             {"version":2,"exportedAt":"2026-08-03T10:00:00","medications":[],"logs":[]}
         """.trimIndent()
-        val parsed = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-            .decodeFromString<BackupFile>(old)
+        val parsed = lenientJson.decodeFromString<BackupFile>(old)
         assertEquals(true, parsed.ongoingNotification)
     }
 

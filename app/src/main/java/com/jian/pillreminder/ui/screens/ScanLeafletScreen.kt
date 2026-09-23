@@ -16,6 +16,12 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,7 +70,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -102,6 +114,9 @@ fun ScanLeafletScreen(
     var result by remember { mutableStateOf<LeafletParser.Result?>(null) }
     var rawText by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf<String?>(null) }
+    // 拍照后的识别中：不离开相机画面（渐隐取景框 + 扫描光带），
+    // 识别完才切 RESULT。相册选图那条路没有相机画面可停留，走全屏加载页。
+    var photoRecognizing by remember { mutableStateOf(false) }
 
     val imageCapture = remember { ImageCapture.Builder().build() }
     val scope = rememberCoroutineScope()
@@ -181,12 +196,6 @@ fun ScanLeafletScreen(
                     CircularProgressIndicator()
                     Spacer(Modifier.height(20.dp))
                     Text("正在识别文字…", style = MaterialTheme.typography.bodyLarge)
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "全程在你手机本地完成，照片不会上传",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
 
                 stage == ScanStage.RESULT && result != null -> ResultPane(
@@ -198,10 +207,11 @@ fun ScanLeafletScreen(
 
                 else -> CameraPane(
                     imageCapture = imageCapture,
+                    recognizing = photoRecognizing,
                     errorMsg = errorMsg,
                     onPickImage = { pickLauncher.launch("image/*") },
                     onShutter = {
-                        stage = ScanStage.RECOGNIZING
+                        photoRecognizing = true
                         errorMsg = null
                         imageCapture.takePicture(
                             ContextCompat.getMainExecutor(context),
@@ -221,12 +231,13 @@ fun ScanLeafletScreen(
                                             .onSuccess { lines ->
                                                 rawText = lines.joinToString("\n")
                                                 result = LeafletParser.parse(lines)
+                                                photoRecognizing = false
                                                 stage = ScanStage.RESULT
                                             }
                                             .onFailure { e ->
                                                 Log.e(TAG, "识别失败", e)
                                                 errorMsg = "没识别出文字，把说明书放平、光线亮一点再拍"
-                                                stage = ScanStage.CAMERA
+                                                photoRecognizing = false
                                             }
                                     }
                                 }
@@ -234,7 +245,7 @@ fun ScanLeafletScreen(
                                 override fun onError(exc: ImageCaptureException) {
                                     Log.e(TAG, "拍照失败", exc)
                                     errorMsg = "拍照失败：${exc.message ?: "未知错误"}"
-                                    stage = ScanStage.CAMERA
+                                    photoRecognizing = false
                                 }
                             }
                         )
@@ -276,6 +287,7 @@ private suspend fun recognizeText(image: InputImage): List<String> =
 @Composable
 private fun CameraPane(
     imageCapture: ImageCapture,
+    recognizing: Boolean,
     errorMsg: String?,
     onShutter: () -> Unit,
     onPickImage: () -> Unit
@@ -283,6 +295,13 @@ private fun CameraPane(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var bindError by remember { mutableStateOf<String?>(null) }
+
+    // 取景框边框与内容的透明度：识别中整体渐隐，把注意力让给扫描光带
+    val frameAlpha by animateFloatAsState(
+        targetValue = if (recognizing) 0.25f else 1f,
+        animationSpec = tween(350),
+        label = "vfAlpha"
+    )
 
     // 竖向分区：提示条 / 取景框（占满剩余）/ 操作区。
     // 早先版本把快门用 align(BottomCenter) 浮在整块画面上，而取景框靠
@@ -314,7 +333,7 @@ private fun CameraPane(
                     color = Color.Black.copy(alpha = 0.55f)
                 ) {
                     Text(
-                        "把「用法用量」那段对准框内，尽量放平、光线充足",
+                        if (recognizing) "正在识别，保持稳定" else "把「用法用量」对准框内，尽量放平、光线充足",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White,
                         textAlign = TextAlign.Center,
@@ -344,8 +363,21 @@ private fun CameraPane(
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(horizontal = 20.dp)
-                    .border(2.dp, Color.White.copy(alpha = 0.75f), MaterialTheme.shapes.large)
-            )
+                    .border(
+                        2.dp,
+                        Color.White.copy(alpha = 0.75f * frameAlpha),
+                        MaterialTheme.shapes.large
+                    )
+            ) {
+                if (recognizing) {
+                    ScanBeam(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .alpha(frameAlpha)
+                    )
+                }
+            }
 
             // ---- 操作区 ----
             Box(
@@ -356,7 +388,12 @@ private fun CameraPane(
             ) {
                 // 快门放在 Box 里独立居中，不受左右元素宽度影响。
                 // 早先靠"相册按钮 + 固定宽 Spacer"凑对称，两者宽度并不相等，快门其实是偏的。
-                ShutterButton(onClick = onShutter)
+                // 识别中快门缩小变淡且不可点：正在识别时再拍一张只会搅乱流程。
+                ShutterButton(
+                    onClick = onShutter,
+                    dimmed = recognizing,
+                    enabled = !recognizing
+                )
 
                 Box(
                     Modifier
@@ -370,15 +407,86 @@ private fun CameraPane(
     }
 }
 
-/** 快门：白色圆底 + 主色相机图标。 */
+/**
+ * 识别中的扫描光带：一条主色亮线带渐隐拖尾，从上到下扫过取景框。
+ * 位移在 drawWithContent 里按父容器实际高度换算（graphicsLayer 的
+ * size 是本元素自己的，拿不到父高度）。
+ */
 @Composable
-private fun ShutterButton(onClick: () -> Unit) {
+private fun ScanBeam(modifier: Modifier = Modifier) {
+    // draw lambda 不是 Composable 上下文，颜色先取出来捕获
+    val beamColor = MaterialTheme.colorScheme.primary
+    val beam = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            beam.animateTo(1f, animationSpec = tween(1300, easing = LinearEasing))
+            beam.snapTo(0f)
+        }
+    }
+    Box(
+        modifier
+            .drawWithContent {
+                // 亮线的扫动范围：从顶部到贴住框底
+                val travel = size.height - 2.dp.toPx()
+                val top = travel * beam.value
+                // 背景整体铺一层极淡的渐变，让"扫过区域"有被光带照过的余韵
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            beamColor.copy(alpha = 0.30f),
+                            beamColor.copy(alpha = 0.12f),
+                            Color.Transparent
+                        )
+                    )
+                )
+                // 亮线本体
+                drawRect(
+                    color = beamColor.copy(alpha = 0.85f),
+                    topLeft = Offset(0f, top),
+                    size = Size(size.width, 2.dp.toPx())
+                )
+                // 光带上方的渐隐拖尾跟着一起走
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            beamColor.copy(alpha = 0.22f)
+                        ),
+                        startY = (top - 40.dp.toPx()).coerceAtLeast(0f),
+                        endY = top
+                    ),
+                    topLeft = Offset(0f, (top - 40.dp.toPx()).coerceAtLeast(0f)),
+                    size = Size(size.width, 40.dp.toPx())
+                )
+            }
+    )
+}
+
+/** 快门：白色圆底 + 主色相机图标。识别中缩小变淡且不可点。 */
+@Composable
+private fun ShutterButton(onClick: () -> Unit, dimmed: Boolean = false, enabled: Boolean = true) {
+    // 识别中缩到 88% 并压透明度——和 CameraPane 顶部的 recognizing 状态联动
+    val sizeScale by animateFloatAsState(
+        targetValue = if (dimmed) 0.88f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "shutterDim"
+    )
     Surface(
         shape = CircleShape,
         color = Color.White,
-        modifier = Modifier.size(72.dp)
+        modifier = Modifier
+            .size(72.dp)
+            .graphicsLayer {
+                scaleX = sizeScale
+                scaleY = sizeScale
+                alpha = if (dimmed) 0.75f else 1f
+            }
     ) {
-        IconButton(onClick = onClick, modifier = Modifier.fillMaxSize()) {
+        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxSize()) {
             Icon(
                 Icons.Filled.CameraAlt,
                 contentDescription = "拍照识别",

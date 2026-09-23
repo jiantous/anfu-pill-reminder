@@ -3,6 +3,7 @@ package com.jian.pillreminder.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,12 +54,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.jian.pillreminder.data.MealRelation
@@ -73,6 +78,7 @@ import com.jian.pillreminder.ui.components.MedIcons
 import com.jian.pillreminder.ui.components.suggestIconForUnit
 import com.jian.pillreminder.ui.theme.MedColors
 import com.jian.pillreminder.ui.theme.medColorAt
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -135,9 +141,11 @@ fun EditMedicationScreen(
         mutableStateOf(com.jian.pillreminder.notify.Reminders.formatDosage(initial.stockThreshold))
     }
     var hasEndDate by remember { mutableStateOf(initial.endDate != null) }
-    var endDateText by remember {
-        mutableStateOf(initial.endDate ?: LocalDate.now().plusMonths(1).toString())
-    }
+    // 结束日期初始值：只对"本来就设了结束日期"的药取 initial 值。
+    // 曾经的默认值"今天+1个月"有个坑：编辑老药时随手开了又没填，保存后
+    // 疗程被悄悄改成一个月——用户根本不知道自己改了什么。现在开着开关
+    // 但没日期就不给保存，逼着用户明确选一天。
+    var endDateText by remember { mutableStateOf(initial.endDate ?: "") }
     var startDateText by remember { mutableStateOf(initial.startDate) }
     /** 正在填哪个日期，null = 没在填。 */
     var editingDate by remember { mutableStateOf<DateField?>(null) }
@@ -157,9 +165,15 @@ fun EditMedicationScreen(
             nameError = true
             return
         }
+        // 开了"结束日期"却没选日子：不猜、不默认，直接拦下让用户去选
+        if (hasEndDate && endDateText.isBlank()) {
+            editingDate = DateField.END
+            return
+        }
         onSave(
             draft.copy(
-                dosage = dosageText.toDoubleOrNull()?.coerceAtLeast(0.0) ?: 1.0,
+                // 剂量为 0 没有意义（不构成服药），最小按 1 算；填非数字也回 1
+                dosage = dosageText.toDoubleOrNull()?.coerceAtLeast(1.0) ?: 1.0,
                 schedule = buildSchedule(),
                 startDate = startDateText,
                 endDate = if (hasEndDate) endDateText else null,
@@ -193,13 +207,49 @@ fun EditMedicationScreen(
             )
         }
     ) { padding ->
+        // 分步导航条用：记录每个分组标题的 y 坐标，点击后平滑滚过去。
+        // onGloballyPositioned 在布局完成时回调，坐标天然准确。
+        val listState = rememberScrollState()
+        val scope = rememberCoroutineScope()
+        val sectionOffsets = remember { mutableStateMapOf<Int, Int>() }
+
         Column(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
         ) {
+            // ---- 分步导航条：长表单的路标，点击直达 ----
+            val labels = listOf("基本信息", "服药时间", "频率", "疗程", "提醒库存", "外观")
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                labels.forEachIndexed { i, label ->
+                    FilterChip(
+                        selected = false,
+                        onClick = {
+                            // Column 是全量布局，所有分组坐标在首帧后都已在
+                            // sectionOffsets 里；安全起见仍判空，拿不到就不动
+                            sectionOffsets[i]?.let { y ->
+                                scope.launch {
+                                    listState.animateScrollTo((y - 8).coerceAtLeast(0))
+                                }
+                            }
+                        },
+                        label = { Text(label) }
+                    )
+                }
+            }
+
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(listState)
+                    .padding(horizontal = 16.dp)
+            ) {
             // ---- 预览徽标 ----
             Spacer(Modifier.height(8.dp))
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -246,7 +296,7 @@ fun EditMedicationScreen(
             }
 
             // ---- 基本信息 ----
-            SettingCard("基本信息") {
+            SettingCard("基本信息", 0, onPlaced = { sectionOffsets[0] = it }) {
                 OutlinedTextField(
                     value = draft.name,
                     onValueChange = { draft = draft.copy(name = it); nameError = false },
@@ -300,10 +350,10 @@ fun EditMedicationScreen(
             }
 
             // ---- 服药时间 ----
-            SettingCard("服药时间") {
+            SettingCard("服药时间", 1, onPlaced = { sectionOffsets[1] = it }) {
                 Text(
                     "可以加多个时间点，比如早晚各一次",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(12.dp))
@@ -365,7 +415,7 @@ fun EditMedicationScreen(
             }
 
             // ---- 用药频率 ----
-            SettingCard("用药频率") {
+            SettingCard("用药频率", 2, onPlaced = { sectionOffsets[2] = it }) {
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     FreqTab.entries.forEachIndexed { index, tab ->
                         SegmentedButton(
@@ -477,7 +527,7 @@ fun EditMedicationScreen(
             }
 
             // ---- 疗程 ----
-            SettingCard("疗程") {
+            SettingCard("疗程", 3, onPlaced = { sectionOffsets[3] = it }) {
                 // 原来是两个要手打 yyyy-MM-dd 的文本框，格式打错了不好发现。
                 // 现在点开填年月日，和暂停用药那边共用同一个对话框。
                 DateRow(
@@ -490,7 +540,13 @@ fun EditMedicationScreen(
                 ListItem(
                     headlineContent = { Text("设定结束日期") },
                     supportingContent = {
-                        Text(if (hasEndDate) "到期后自动不再提醒" else "长期服用，不设结束")
+                        Text(
+                            when {
+                                !hasEndDate -> "长期服用，不设结束"
+                                endDateText.isBlank() -> "请选择结束日期"
+                                else -> "${endDateText.toPrettyDate()} 后自动不再提醒"
+                            }
+                        )
                     },
                     trailingContent = {
                         Switch(checked = hasEndDate, onCheckedChange = { hasEndDate = it })
@@ -503,14 +559,14 @@ fun EditMedicationScreen(
                     DateRow(
                         label = "结束日期",
                         dateText = endDateText,
-                        hint = null,
+                        hint = if (endDateText.isBlank()) "还没选日期" else null,
                         onClick = { editingDate = DateField.END }
                     )
                 }
             }
 
             // ---- 提醒与库存 ----
-            SettingCard("提醒与库存") {
+            SettingCard("提醒与库存", 4, onPlaced = { sectionOffsets[4] = it }) {
                 ListItem(
                     headlineContent = { Text("到点通知提醒") },
                     supportingContent = { Text("关掉后只在清单里显示，不推送通知") },
@@ -548,7 +604,7 @@ fun EditMedicationScreen(
             }
 
             // ---- 外观 ----
-            SettingCard("图标与颜色") {
+            SettingCard("图标与颜色", 5, onPlaced = { sectionOffsets[5] = it }) {
                 Text("颜色", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(12.dp))
                 androidx.compose.foundation.layout.FlowRow(
@@ -631,6 +687,7 @@ fun EditMedicationScreen(
                 Text(if (isNew) "添加药品" else "保存修改")
             }
             Spacer(Modifier.height(32.dp))
+            }
         }
     }
 
@@ -700,6 +757,11 @@ fun EditMedicationScreen(
 /** 疗程里的两个日期，用来标识正在填哪一个。 */
 private enum class DateField { START, END }
 
+/** 存储格式(2026-09-22)转成人话(2026 年 9 月 22 日)，非法输入原样返回。 */
+private fun String.toPrettyDate(): String = runCatching {
+    LocalDate.parse(this).format(DateTimeFormatter.ofPattern("yyyy 年 M 月 d 日"))
+}.getOrDefault(this)
+
 /**
  * 一行可点的日期。点了弹填写对话框。
  *
@@ -744,17 +806,44 @@ private fun DateRow(
     }
 }
 
+/**
+ * 表单分组：左侧 primary 色条 + 步骤序号（x / N）+ 卡片。
+ * [onPlaced] 把本组标题的 y 坐标报给调用方，分步导航条据此滚动。
+ */
 @Composable
-private fun SettingCard(
+private fun androidx.compose.foundation.layout.ColumnScope.SettingCard(
     title: String,
+    index: Int,
+    onPlaced: (Int) -> Unit,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
 ) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(start = 4.dp, bottom = 8.dp)
+            .onGloballyPositioned { coords ->
+                onPlaced(coords.positionInParent().y.toInt())
+            }
+    ) {
+        Box(
+            Modifier
+                .size(width = 4.dp, height = 16.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(title, style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "${index + 1} / 6",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+        )
+    }
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(

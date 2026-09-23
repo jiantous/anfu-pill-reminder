@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -49,6 +50,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.collectAsState
@@ -75,6 +77,7 @@ import com.jian.pillreminder.ui.components.MedBadge
 import com.jian.pillreminder.ui.components.TimePickerDialog
 import com.jian.pillreminder.ui.theme.medColorAt
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -83,10 +86,9 @@ import java.util.Locale
 @Composable
 fun TodayScreen(
     vm: MedViewModel,
-    onAddMedication: () -> Unit,
     onOpenMedication: (String) -> Unit,
-    permissionBanner: (@Composable () -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    permissionBanner: (@Composable () -> Unit)? = null
 ) {
     val doses by vm.dosesForSelectedDate.collectAsState()
     val date by vm.selectedDate.collectAsState()
@@ -104,6 +106,11 @@ fun TodayScreen(
     val pending = doses.filter { it.status == DoseStatus.PENDING && !it.isOverdue(now) }
     val overdue = doses.filter { it.status == DoseStatus.PENDING && it.isOverdue(now) }
     val done = doses.filter { it.status != DoseStatus.PENDING }
+
+    // LazyListScope 不是 Composable 上下文，主题色得先在 Composable 里取出来再传进去
+    val errorColor = MaterialTheme.colorScheme.error
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val neutralColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -155,71 +162,38 @@ fun TodayScreen(
             }
         }
 
-        if (overdue.isNotEmpty()) {
-            item { GroupLabel("已错过", overdue.size, MaterialTheme.colorScheme.error) }
-            items(overdue, key = { it.key }) { item ->
-                DoseCard(
-                    item, now,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        placementSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ),
-                    onToggle = { vm.toggleTaken(item) },
-                    onSkip = { vm.markSkipped(item) },
-                    onOpen = { onOpenMedication(item.medication.id) },
-                    onReschedule = { rescheduling = item },
-                    onClearReschedule = { vm.clearDoseReschedule(item) }
-                )
-            }
-        }
+        DoseSection(
+            label = "已错过", count = overdue.size,
+            labelColor = errorColor,
+            doses = overdue, now = now,
+            onToggle = { vm.toggleTaken(it) },
+            onSkip = { vm.markSkipped(it) },
+            onOpen = { onOpenMedication(it) },
+            onReschedule = { rescheduling = it },
+            onClearReschedule = { vm.clearDoseReschedule(it) }
+        )
 
-        if (pending.isNotEmpty()) {
-            item { GroupLabel("待服用", pending.size, MaterialTheme.colorScheme.primary) }
-            items(pending, key = { it.key }) { item ->
-                DoseCard(
-                    item, now,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        placementSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ),
-                    onToggle = { vm.toggleTaken(item) },
-                    onSkip = { vm.markSkipped(item) },
-                    onOpen = { onOpenMedication(item.medication.id) },
-                    onReschedule = { rescheduling = item },
-                    onClearReschedule = { vm.clearDoseReschedule(item) }
-                )
-            }
-        }
+        DoseSection(
+            label = "待服用", count = pending.size,
+            labelColor = primaryColor,
+            doses = pending, now = now,
+            onToggle = { vm.toggleTaken(it) },
+            onSkip = { vm.markSkipped(it) },
+            onOpen = { onOpenMedication(it) },
+            onReschedule = { rescheduling = it },
+            onClearReschedule = { vm.clearDoseReschedule(it) }
+        )
 
-        if (done.isNotEmpty()) {
-            item { GroupLabel("已完成", done.size, MaterialTheme.colorScheme.onSurfaceVariant) }
-            items(done, key = { it.key }) { item ->
-                DoseCard(
-                    item, now,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        placementSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ),
-                    onToggle = { vm.toggleTaken(item) },
-                    onSkip = { vm.markSkipped(item) },
-                    onOpen = { onOpenMedication(item.medication.id) },
-                    onReschedule = { rescheduling = item },
-                    onClearReschedule = { vm.clearDoseReschedule(item) }
-                )
-            }
-        }
+        DoseSection(
+            label = "已完成", count = done.size,
+            labelColor = neutralColor,
+            doses = done, now = now,
+            onToggle = { vm.toggleTaken(it) },
+            onSkip = { vm.markSkipped(it) },
+            onOpen = { onOpenMedication(it) },
+            onReschedule = { rescheduling = it },
+            onClearReschedule = { vm.clearDoseReschedule(it) }
+        )
 
         item { Spacer(Modifier.height(72.dp)) }
     }
@@ -239,6 +213,44 @@ fun TodayScreen(
                 vm.rescheduleDose(item, com.jian.pillreminder.data.TimeOfDay(h, m))
                 rescheduling = null
             }
+        )
+    }
+}
+
+/**
+ * 今日清单的一节（已错过/待服用/已完成）。三节除了标题和颜色，
+ * 卡片和动画完全一致——曾经三段复制粘贴，改一处动画要同步三处。
+ */
+private fun LazyListScope.DoseSection(
+    label: String,
+    count: Int,
+    labelColor: Color,
+    doses: List<DoseItem>,
+    now: LocalDateTime,
+    onToggle: (DoseItem) -> Unit,
+    onSkip: (DoseItem) -> Unit,
+    onOpen: (String) -> Unit,
+    onReschedule: (DoseItem) -> Unit,
+    onClearReschedule: (DoseItem) -> Unit
+) {
+    if (doses.isEmpty()) return
+    item { GroupLabel(label, count, labelColor) }
+    items(doses, key = { it.key }) { item ->
+        DoseCard(
+            item, now,
+            modifier = Modifier.animateItem(
+                fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                placementSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ),
+            onToggle = { onToggle(item) },
+            onSkip = { onSkip(item) },
+            onOpen = { onOpen(item.medication.id) },
+            onReschedule = { onReschedule(item) },
+            onClearReschedule = { onClearReschedule(item) }
         )
     }
 }
@@ -384,7 +396,7 @@ private fun LowStockBanner(meds: List<Medication>) {
                 Spacer(Modifier.height(2.dp))
                 Text(
                     meds.joinToString("、") {
-                        "${it.name} 剩 ${Reminders.formatDosage(it.stockRemaining ?: 0.0)}${it.unit}"
+                        "${it.name} 剩 ${Reminders.formatDosage(it.stockRemaining ?: 0.0)} ${it.unit}"
                     },
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -522,7 +534,7 @@ private fun DoseCard(
                         }
                     }
                     Spacer(Modifier.height(2.dp))
-                    val dose = Reminders.formatDosage(med.dosage) + med.unit
+                    val dose = Reminders.formatDosage(med.dosage) + " " + med.unit
                     val meal = if (med.mealRelation.label == "无要求") "" else " · ${med.mealRelation.label}"
                     // 挪过时间的把原定时刻划掉再写新的，一眼能看出这次是临时调整过的
                     Text(

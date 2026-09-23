@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -58,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
@@ -93,6 +95,10 @@ fun MedicationsScreen(
     val active = remember(meds, sortMode) { sortMeds(meds.filterNot { it.archived }, sortMode) }
     val archived = meds.filter { it.archived }
 
+    // LazyListScope 不是 Composable 上下文，主题色得先在 Composable 里取出来再传进去
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val neutralColor = MaterialTheme.colorScheme.onSurfaceVariant
+
     if (meds.isEmpty()) {
         EmptyState(
             icon = Icons.Filled.Medication,
@@ -117,75 +123,34 @@ fun MedicationsScreen(
             item { SortBar(sortMode, onSort = { sortMode = it }) }
         }
 
-        if (active.isNotEmpty()) {
-            item {
-                GroupLabel(
-                    text = "在用药品",
-                    count = active.size,
-                    color = MaterialTheme.colorScheme.primary
-                )
+        MedSection(
+            label = "在用药品",
+            count = active.size,
+            labelColor = primaryColor,
+            meds = active,
+            onOpen = onOpenMedication,
+            onArchive = { vm.toggleArchived(it) },
+            onDelete = { pendingDelete = it },
+            onEditStock = { stockEditing = it },
+            onPause = { med ->
+                // 已在暂停中就直接取消，否则弹对话框选天数
+                if (ScheduleEngine.isPausedNow(med)) vm.setPaused(med, null) else pausing = med
             }
-            items(active, key = { it.id }) { med ->
-                MedicationCard(
-                    med = med,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        placementSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ),
-                    onClick = { onOpenMedication(med.id) },
-                    onArchive = { vm.toggleArchived(med) },
-                    onDelete = { pendingDelete = med },
-                    onEditStock = { stockEditing = med },
-                    onPause = {
-                        // 已在暂停中就直接取消，否则弹对话框选天数
-                        if (ScheduleEngine.isPausedNow(med)) {
-                            vm.setPaused(med, null)
-                        } else {
-                            pausing = med
-                        }
-                    }
-                )
-            }
-        }
+        )
 
-        if (archived.isNotEmpty()) {
-            item {
-                GroupLabel(
-                    text = "已停用",
-                    count = archived.size,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        MedSection(
+            label = "已停用",
+            count = archived.size,
+            labelColor = neutralColor,
+            meds = archived,
+            onOpen = onOpenMedication,
+            onArchive = { vm.toggleArchived(it) },
+            onDelete = { pendingDelete = it },
+            onEditStock = { stockEditing = it },
+            onPause = { med ->
+                if (ScheduleEngine.isPausedNow(med)) vm.setPaused(med, null) else pausing = med
             }
-            items(archived, key = { it.id }) { med ->
-                MedicationCard(
-                    med = med,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        placementSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ),
-                    onClick = { onOpenMedication(med.id) },
-                    onArchive = { vm.toggleArchived(med) },
-                    onDelete = { pendingDelete = med },
-                    onEditStock = { stockEditing = med },
-                    onPause = {
-                        // 已在暂停中就直接取消，否则弹对话框选天数
-                        if (ScheduleEngine.isPausedNow(med)) {
-                            vm.setPaused(med, null)
-                        } else {
-                            pausing = med
-                        }
-                    }
-                )
-            }
-        }
+        )
 
         item { Spacer(Modifier.height(72.dp)) }
     }
@@ -243,6 +208,40 @@ fun MedicationsScreen(
                 vm.setStock(med, stock, threshold)
                 stockEditing = null
             }
+        )
+    }
+}
+
+/** 药箱的一节（在用/已停用）。两节的卡片和动画完全一致，抽成一份。 */
+private fun LazyListScope.MedSection(
+    label: String,
+    count: Int,
+    labelColor: Color,
+    meds: List<Medication>,
+    onOpen: (String) -> Unit,
+    onArchive: (Medication) -> Unit,
+    onDelete: (Medication) -> Unit,
+    onEditStock: (Medication) -> Unit,
+    onPause: (Medication) -> Unit
+) {
+    if (meds.isEmpty()) return
+    item { GroupLabel(text = label, count = count, color = labelColor) }
+    items(meds, key = { it.id }) { med ->
+        MedicationCard(
+            med = med,
+            modifier = Modifier.animateItem(
+                fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                placementSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ),
+            onClick = { onOpen(med.id) },
+            onArchive = { onArchive(med) },
+            onDelete = { onDelete(med) },
+            onEditStock = { onEditStock(med) },
+            onPause = { onPause(med) }
         )
     }
 }
@@ -406,12 +405,13 @@ private fun MedicationCard(
                     Text(
                         buildString {
                             append(Reminders.formatDosage(med.dosage))
+                            append(" ")
                             append(med.unit)
                             append(" · ")
                             // 暂停中就把恢复日期说清楚，比只显示频率有用。
                             // 说的是"恢复日期"而不是"暂停到哪天为止"：对话框里承诺的
                             // 就是恢复日期，两处必须同一个数字，否则用户以为哪边算错了。
-                            if (paused) append("${formatResumeDate(med.pausedUntil)}恢复")
+                            if (paused) append("${formatResumeDate(med.pausedUntil)} 恢复")
                             else append(ScheduleEngine.describeSchedule(med))
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -498,11 +498,26 @@ private fun MedicationCard(
             med.stockRemaining?.let { remaining ->
                 Spacer(Modifier.height(12.dp))
                 val low = remaining <= med.stockThreshold
-                // 以"阈值的 4 倍"作为满格参考，纯展示用
-                val full = (med.stockThreshold * 4).coerceAtLeast(1.0)
                 // 库存测算：够吃到哪天。测算口径见 ScheduleEngine.stockRunOutDate。
                 val runOut = remember(med) {
                     ScheduleEngine.stockRunOutDate(med, LocalDate.now())
+                }
+                // 满格参考用"从今天算 30 天的用量"：进度条回答的问题是
+                // "这个量够不够近期一阵子"，30 天对续药决策正好。
+                // 曾经用"阈值的 4 倍"，阈值设 100 时 300 片也显示不满 1/4，
+                // 阈值设 1 时 4 片就满——数字和"够吃到 X 日"的文案对不上。
+                val full = remember(med) {
+                    // 未来 30 天按实际排程会吃掉的总量
+                    var usage = 0.0
+                    var date = LocalDate.now()
+                    var checked = 0
+                    while (checked < 30) {
+                        if (ScheduleEngine.isDueOn(med, date)) usage += med.dosage * med.times.size
+                        date = date.plusDays(1)
+                        checked++
+                    }
+                    // 兜底防 0（暂停 30 天/历史脏数据 dosage=0），除 0 会出 NaN
+                    usage.coerceAtLeast(med.dosage).coerceAtLeast(0.01)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -515,11 +530,11 @@ private fun MedicationCard(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         buildString {
-                            append("剩 ${Reminders.formatDosage(remaining)}${med.unit}")
+                            append("剩 ${Reminders.formatDosage(remaining)} ${med.unit}")
                             // 低库存时说"哪天用完"（催续药），充足时说"够吃到哪天"（安心）
                             when {
                                 low && runOut != null ->
-                                    append(" · 预计 ${runOut.format(RunOutDateFormat)}用完")
+                                    append(" · 预计 ${runOut.format(RunOutDateFormat)} 用完")
                                 low -> append(" · 该续药了")
                                 runOut != null -> append(" · 够吃到 ${runOut.format(RunOutDateFormat)}")
                             }
@@ -627,7 +642,7 @@ private fun PauseDialog(
                 }
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    "${formatResumeDate(until.toString())}恢复用药" +
+                    "${formatResumeDate(until.toString())} 恢复用药" +
                         "（暂停 ${ChronoUnit.DAYS.between(today, until) + 1} 天）",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary
@@ -673,7 +688,7 @@ private fun StockDialog(
         text = {
             Column {
                 Text(
-                    "每次标记「已服用」会自动扣掉 ${Reminders.formatDosage(med.dosage)}${med.unit}。留空表示不管库存。",
+                    "每次标记「已服用」会自动扣掉 ${Reminders.formatDosage(med.dosage)} ${med.unit}。留空表示不管库存。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

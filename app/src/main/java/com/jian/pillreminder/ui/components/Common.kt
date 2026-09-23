@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -140,7 +141,7 @@ fun ProgressRing(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val stroke = strokeWidth.toPx()
             val diameter = kotlin.math.min(size.width, size.height) - stroke
-            val topLeft = androidx.compose.ui.geometry.Offset(
+            val topLeft = Offset(
                 (size.width - diameter) / 2f,
                 (size.height - diameter) / 2f
             )
