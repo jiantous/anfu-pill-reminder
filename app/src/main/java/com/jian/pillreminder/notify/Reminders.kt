@@ -24,6 +24,7 @@ import com.jian.pillreminder.data.MedRepository
 import com.jian.pillreminder.data.Medication
 import com.jian.pillreminder.data.TimeOfDay
 import com.jian.pillreminder.domain.ScheduleEngine
+import java.math.BigDecimal
 import java.time.LocalDateTime
 
 object Reminders {
@@ -681,6 +682,15 @@ object Reminders {
         }
     }
 
-    fun formatDosage(v: Double): String =
-        if (v == v.toLong().toDouble()) v.toLong().toString() else v.toString()
+    /**
+     * 剂量/库存的统一显示格式。整数值不带小数点；小数原样保留。
+     * 极小值（<0.001）Double.toString 会输出科学计数法（如 "1.0E-4"），
+     * 进编辑页再被输入过滤一洗就损坏成别的数字，这里显式展开成普通小数。
+     */
+    fun formatDosage(v: Double): String = when {
+        !v.isFinite() -> "0"
+        v == v.toLong().toDouble() -> v.toLong().toString()
+        kotlin.math.abs(v) >= 0.001 -> v.toString()
+        else -> BigDecimal(v.toString()).stripTrailingZeros().toPlainString()
+    }
 }

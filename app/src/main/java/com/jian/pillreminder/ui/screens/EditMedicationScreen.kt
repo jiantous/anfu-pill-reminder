@@ -86,6 +86,25 @@ private enum class FreqTab(val label: String) {
     DAILY("每天"), WEEKLY("按周"), INTERVAL("间隔"), CYCLE("周期")
 }
 
+internal fun sanitizeDosageInput(raw: String): String {
+    val result = StringBuilder()
+    var hasDecimalPoint = false
+    raw.forEach { char ->
+        when {
+            char.isDigit() -> result.append(char)
+            char == '.' && !hasDecimalPoint -> {
+                if (result.isEmpty()) result.append('0')
+                result.append(char)
+                hasDecimalPoint = true
+            }
+        }
+    }
+    return result.toString()
+}
+
+internal fun parsePositiveDosage(text: String): Double? =
+    text.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditMedicationScreen(
@@ -104,6 +123,10 @@ fun EditMedicationScreen(
     var editingTimeIndex by remember { mutableStateOf<Int?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var nameError by remember { mutableStateOf(false) }
+    var dosageError by remember { mutableStateOf(false) }
+    // 库存填了内容但不是有效数字（如 "1.2.3"）时拦截保存，
+    // 不能静默当作"不管理库存"——那会把用户的库存数据悄悄丢掉
+    var stockError by remember { mutableStateOf(false) }
     // 用户手动挑过图标之后，改单位就不再自动换图标了。
     // 编辑已有药品时视为"已挑过"——那个图标本来就是他之前定的。
     var iconPickedByUser by remember { mutableStateOf(!isNew) }
@@ -165,6 +188,17 @@ fun EditMedicationScreen(
             nameError = true
             return
         }
+        val dosage = parsePositiveDosage(dosageText)
+        if (dosage == null) {
+            dosageError = true
+            return
+        }
+        // 库存：留空=不管（null）；填了内容就必须是有效数字，否则拦截
+        val stock = if (stockText.isBlank()) null else stockText.toDoubleOrNull()
+        if (stockText.isNotBlank() && stock == null) {
+            stockError = true
+            return
+        }
         // 开了"结束日期"却没选日子：不猜、不默认，直接拦下让用户去选
         if (hasEndDate && endDateText.isBlank()) {
             editingDate = DateField.END
@@ -172,12 +206,11 @@ fun EditMedicationScreen(
         }
         onSave(
             draft.copy(
-                // 剂量为 0 没有意义（不构成服药），最小按 1 算；填非数字也回 1
-                dosage = dosageText.toDoubleOrNull()?.coerceAtLeast(1.0) ?: 1.0,
+                dosage = dosage,
                 schedule = buildSchedule(),
                 startDate = startDateText,
                 endDate = if (hasEndDate) endDateText else null,
-                stockRemaining = stockText.toDoubleOrNull(),
+                stockRemaining = stock,
                 stockThreshold = thresholdText.toDoubleOrNull() ?: 5.0
             )
         )
@@ -313,9 +346,16 @@ fun EditMedicationScreen(
                 Row {
                     OutlinedTextField(
                         value = dosageText,
-                        onValueChange = { dosageText = it.filter { c -> c.isDigit() || c == '.' } },
+                        onValueChange = {
+                            dosageText = sanitizeDosageInput(it)
+                            dosageError = false
+                        },
                         label = { Text("单次剂量") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = dosageError,
+                        supportingText = if (dosageError) {
+                            { Text("请输入大于 0 的剂量，例如 0.5", color = MaterialTheme.colorScheme.error) }
+                        } else null,
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
@@ -584,17 +624,24 @@ fun EditMedicationScreen(
                 Row {
                     OutlinedTextField(
                         value = stockText,
-                        onValueChange = { stockText = it.filter { c -> c.isDigit() || c == '.' } },
+                        onValueChange = {
+                            stockText = sanitizeDosageInput(it)
+                            stockError = false
+                        },
                         label = { Text("现有库存") },
                         placeholder = { Text("留空=不管") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = stockError,
+                        supportingText = if (stockError) {
+                            { Text("填了内容必须是有效数字，或清空表示不管", color = MaterialTheme.colorScheme.error) }
+                        } else null,
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(Modifier.width(12.dp))
                     OutlinedTextField(
                         value = thresholdText,
-                        onValueChange = { thresholdText = it.filter { c -> c.isDigit() || c == '.' } },
+                        onValueChange = { thresholdText = sanitizeDosageInput(it) },
                         label = { Text("续药提醒线") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,

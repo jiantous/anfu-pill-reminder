@@ -71,7 +71,7 @@ class MedRepository private constructor(private val file: File) {
             return AppData(schemaVersion = CURRENT_SCHEMA)
         }
         return runCatching {
-            pruneStale(migrate(json.decodeFromString<AppData>(file.readText())))
+            pruneStale(migrate(json.decodeFromString<AppData>(file.readText())).withNormalizedDosages())
         }.getOrElse { err ->
             android.util.Log.e("PillRepo", "数据文件解析失败，进入只读保护模式", err)
             quarantineCorruptFile()
@@ -211,10 +211,28 @@ class MedRepository private constructor(private val file: File) {
 
     // ---- 药品 ----
 
+    /**
+     * 剂量规范化：脏数据（历史版本或手改备份）里的 0/负数/NaN 会让库存
+     * 扣减永远不动、甚至越扣越多。统一钳到最小有效正剂量 0.05
+     * （约 1/20 片，远小于任何真实处方，够小到不误导，又避开除 0）。
+     * 对正常数据是恒等变换。
+     */
+    private fun Medication.normalized(): Medication {
+        val d = dosage
+        return if (d.isFinite() && d >= MIN_VALID_DOSAGE) this
+        else copy(dosage = MIN_VALID_DOSAGE)
+    }
+
+    private fun AppData.withNormalizedDosages(): AppData {
+        val meds = medications.map { it.normalized() }
+        return if (meds == medications) this else copy(medications = meds)
+    }
+
     fun upsertMedication(med: Medication) = update { d ->
-        val idx = d.medications.indexOfFirst { it.id == med.id }
-        val list = if (idx >= 0) d.medications.toMutableList().also { it[idx] = med }
-        else d.medications + med
+        val m = med.normalized()
+        val idx = d.medications.indexOfFirst { it.id == m.id }
+        val list = if (idx >= 0) d.medications.toMutableList().also { it[idx] = m }
+        else d.medications + m
         d.copy(medications = list)
     }
 
@@ -353,11 +371,14 @@ class MedRepository private constructor(private val file: File) {
     fun markBackedUp(date: String) = update { it.copy(lastBackupDate = date) }
 
     /** 导入备份：整体替换内存与磁盘上的数据，同步落盘确保不丢。 */
-    fun replaceAll(newData: AppData) = update(sync = true) { newData }
+    fun replaceAll(newData: AppData) = update(sync = true) { newData.withNormalizedDosages() }
 
     companion object {
         /** 当前数据格式版本，见 [AppData.schemaVersion]。 */
         const val CURRENT_SCHEMA = 1
+
+        /** 见 [Medication.normalized]：脏数据剂量的最小有效值。 */
+        const val MIN_VALID_DOSAGE = 0.05
 
         @Volatile
         private var instance: MedRepository? = null

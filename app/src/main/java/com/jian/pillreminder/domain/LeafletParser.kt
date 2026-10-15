@@ -130,13 +130,15 @@ object LeafletParser {
         val p1 = Regex("""(?:每次|一次|每回)\s*([0-9]+(?:\.[0-9]+)?|[一二两三四五六七八九十半])\s*($unitAlt)""")
         p1.find(flat)?.let { m ->
             val v = toDouble(m.groupValues[1])
-            if (v != null) return Triple(v, normalizeUnit(m.groupValues[2]), m.value)
+            // "每次0片"这类（或 OCR 把数字认错成 0）没有意义，不预填，
+            // 否则表单预填 0 会被保存校验拦下——自己填的自己不让存
+            if (v != null && v > 0.0) return Triple(v, normalizeUnit(m.groupValues[2]), m.value)
         }
         // "1片，每日3次" —— 剂量在频次前面
         val p2 = Regex("""([0-9]+(?:\.[0-9]+)?|[一二两三四五六七八九十半])\s*($unitAlt)\s*[，,、]?\s*(?:每日|每天|一日|1日)""")
         p2.find(flat)?.let { m ->
             val v = toDouble(m.groupValues[1])
-            if (v != null) return Triple(v, normalizeUnit(m.groupValues[2]), m.value)
+            if (v != null && v > 0.0) return Triple(v, normalizeUnit(m.groupValues[2]), m.value)
         }
         return Triple(null, null, null)
     }

@@ -78,6 +78,14 @@ class LeafletParserTest {
     }
 
     @Test
+    fun `零剂量不预填`() {
+        // "每次0片"（OCR 认错字也可能出 0）没有意义，不预填，
+        // 否则表单预填 0 会被保存校验拦下
+        val r = parse("每次0片，每日1次")
+        assertNull(r.dosage)
+    }
+
+    @Test
     fun `毫升单位_归一化为大写mL`() {
         val r = parse("每次10ml，每日3次")
         assertEquals(10.0, r.dosage!!, 0.001)
