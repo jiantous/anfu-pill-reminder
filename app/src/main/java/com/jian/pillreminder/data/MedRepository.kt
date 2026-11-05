@@ -307,6 +307,9 @@ class MedRepository private constructor(private val file: File) {
     /** 设置界面缩放比例（80%~130%，5% 一档，见 [snapUiScale]）。 */
     fun setUiScale(scale: Float) = update { it.copy(uiScale = scale) }
 
+    /** 设置提醒铃声。null = 恢复系统默认闹钟铃声。 */
+    fun setRingtoneUri(uri: String?) = update { it.copy(ringtoneUri = uri) }
+
     // ---- 暂停用药 ----
 
     /** [until] 为 null 表示立即恢复。 */

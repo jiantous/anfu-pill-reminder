@@ -366,6 +366,7 @@ private fun MedicationCard(
     onPause: () -> Unit
 ) {
     val palette = medColorAt(med.colorIndex)
+    val (badgeBg, badgeFg) = palette.colors()
     var menuOpen by remember { mutableStateOf(false) }
     val paused = ScheduleEngine.isPausedNow(med)
 
@@ -381,8 +382,8 @@ private fun MedicationCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MedBadge(
                     iconIndex = med.iconIndex,
-                    container = palette.container(),
-                    content = palette.content(),
+                    container = badgeBg,
+                    content = badgeFg,
                     size = 46.dp
                 )
                 Spacer(Modifier.width(16.dp))

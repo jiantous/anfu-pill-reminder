@@ -93,7 +93,19 @@ private val SeedDark = darkColorScheme(
 /** 药品卡片可选配色：(浅色容器, 浅色前景, 深色容器, 深色前景)。 */
 data class MedColor(val name: String, val light: Color, val onLight: Color, val dark: Color, val onDark: Color) {
     /**
-     * 容器色：Android 12+ 动态取色时向壁纸主色调和（harmonize）——
+     * 成对取容器色与前景色：深浅模式只判一次，切换瞬间不会出现
+     * "容器取深色、文字取浅色"的错配。成对使用处一律用这个。
+     */
+    @Composable
+    fun colors(): Pair<Color, Color> {
+        val (bg, fg) = if (isSystemInDarkTheme()) dark to onDark else light to onLight
+        return harmonizeWithPrimary(bg) to harmonizeWithPrimary(fg)
+    }
+
+    /**
+     * 容器色（只取容器时的单取入口，如 AssistChip 背景）。
+     * 成对使用时改用 [colors]，避免深浅切换瞬间错配。
+     * Android 12+ 动态取色时向壁纸主色调和（harmonize）——
      * 色相身份保留（蓝还是蓝、粉还是粉），但色度向主题靠拢，
      * 任何壁纸下 8 个颜色都和整体观感协调（Seal 的做法）。
      * Android 11 及以下维持原色（种子色主题下本来就是配好的）。
@@ -104,6 +116,7 @@ data class MedColor(val name: String, val light: Color, val onLight: Color, val 
         return harmonizeWithPrimary(raw)
     }
 
+    /** 前景色（单取入口）。成对使用时改用 [colors]。 */
     @Composable
     fun content(): Color {
         val raw = if (isSystemInDarkTheme()) onDark else onLight
@@ -177,7 +190,19 @@ val MedColors = listOf(
     MedColor("橙",   Color(0xFFFFDCC2), Color(0xFF5A2E00), Color(0xFF5D3F26), Color(0xFFFFDCC2)),
     MedColor("黄",   Color(0xFFFDF0C0), Color(0xFF4F4300), Color(0xFF4F4300), Color(0xFFFDF0C0)),
     MedColor("绿",   Color(0xFFC8E6C9), Color(0xFF19391B), Color(0xFF2D4A2F), Color(0xFFC8E6C9)),
-    MedColor("灰蓝", Color(0xFFDDE3EA), Color(0xFF2A3138), Color(0xFF3A4148), Color(0xFFDDE3EA))
+    MedColor("灰蓝", Color(0xFFDDE3EA), Color(0xFF2A3138), Color(0xFF3A4148), Color(0xFFDDE3EA)),
+    // ---- 以下 8 色为 1.1.16 扩充：补齐色相空缺（红/青/棕/薄荷/靛/玫红/橄榄/灰）。
+    // 配色规律与前 8 色一致：浅色容器高亮度低饱和，文字色压深到对比度 ≥4.5:1，
+    // 深色模式用"深容器+浅文字"。前 8 个条目的顺序永远不动——老数据的
+    // colorIndex 靠这个顺序映射到原颜色。
+    MedColor("红",   Color(0xFFFFDAD6), Color(0xFF4A0A05), Color(0xFF5D1F18), Color(0xFFFFDAD6)),
+    MedColor("青",   Color(0xFFD0F0F3), Color(0xFF0A2E31), Color(0xFF1D484B), Color(0xFFD0F0F3)),
+    MedColor("棕",   Color(0xFFF0DEC8), Color(0xFF3A2913), Color(0xFF4E3D27), Color(0xFFF0DEC8)),
+    MedColor("薄荷", Color(0xFFCBF3E8), Color(0xFF00382C), Color(0xFF1A4F43), Color(0xFFCBF3E8)),
+    MedColor("靛",   Color(0xFFDCE0F9), Color(0xFF101C56), Color(0xFF24306B), Color(0xFFDCE0F9)),
+    MedColor("玫红", Color(0xFFFFD9E7), Color(0xFF4E0737), Color(0xFF633B4C), Color(0xFFFFD9E7)),
+    MedColor("橄榄", Color(0xFFE6EFC9), Color(0xFF2C3506), Color(0xFF3F4A1A), Color(0xFFE6EFC9)),
+    MedColor("灰",   Color(0xFFE2E2E6), Color(0xFF282A31), Color(0xFF3B3D44), Color(0xFFE2E2E6))
 )
 
 fun medColorAt(index: Int): MedColor = MedColors[index.mod(MedColors.size)]

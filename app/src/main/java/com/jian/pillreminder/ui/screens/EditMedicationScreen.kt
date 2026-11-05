@@ -286,11 +286,11 @@ fun EditMedicationScreen(
             // ---- 预览徽标 ----
             Spacer(Modifier.height(8.dp))
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                val palette = medColorAt(draft.colorIndex)
+                val (badgeBg, badgeFg) = medColorAt(draft.colorIndex).colors()
                 MedBadge(
                     iconIndex = draft.iconIndex,
-                    container = palette.container(),
-                    content = palette.content(),
+                    container = badgeBg,
+                    content = badgeFg,
                     size = 80.dp
                 )
             }
@@ -660,11 +660,12 @@ fun EditMedicationScreen(
                 ) {
                     MedColors.forEachIndexed { index, c ->
                         val selected = draft.colorIndex == index
+                        val (cBg, cFg) = c.colors()
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
                                 .clip(CircleShape)
-                                .background(c.container())
+                                .background(cBg)
                                 .then(
                                     if (selected) Modifier.border(
                                         3.dp,
@@ -679,7 +680,7 @@ fun EditMedicationScreen(
                                 Icon(
                                     Icons.Filled.Check,
                                     contentDescription = null,
-                                    tint = c.content(),
+                                    tint = cFg,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }

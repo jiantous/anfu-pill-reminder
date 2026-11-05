@@ -13,6 +13,7 @@ import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -34,13 +35,17 @@ object Reminders {
     /**
      * 服药提醒通道。
      *
-     * 带 v2 后缀是因为通道一旦创建，声音/免打扰绕行这类属性就无法再由 App 修改，
-     * 只能新建一个通道。v1 用的是 CATEGORY_REMINDER + 默认通知音，
-     * 在系统免打扰下会被静音——而晚间那次药恰好撞在很多人的免打扰时段里。
-     * v2 改用闹钟音频属性并申请绕过免打扰，语义上也更对：这本来就是闹钟。
+     * 带版本后缀是因为通道一旦创建，声音/免打扰绕行这类属性就无法再由 App 修改，
+     * 只能新建一个通道：
+     * - v1：CATEGORY_REMINDER + 默认通知音，系统免打扰下会被静音——晚间那次药
+     *   恰好撞在很多人的免打扰时段里。v2 改用闹钟音频属性并申请绕过免打扰，
+     *   语义上也更对：这本来就是闹钟。
+     * - v2 → v3：支持用户在设置里自选提醒铃声。声音属性同样锁死，换铃声必须
+     *   换通道。音频属性（闹钟 + 绕免打扰）原样继承。
      */
-    const val CHANNEL_DOSE = "dose_reminders_v2"
+    const val CHANNEL_DOSE = "dose_reminders_v3"
     private const val CHANNEL_DOSE_LEGACY = "dose_reminders"
+    private const val CHANNEL_DOSE_LEGACY_V2 = "dose_reminders_v2"
     const val CHANNEL_STOCK = "stock_alerts"
 
     const val EXTRA_MED_ID = "med_id"
@@ -54,6 +59,27 @@ object Reminders {
     const val ACTION_SKIP = "com.jian.pillreminder.SKIP"
     /** 暂停到期、今天恢复用药的提醒。 */
     const val ACTION_RESUME = "com.jian.pillreminder.RESUME"
+
+    /**
+     * 把存储的铃声 URI 字符串解析成可用的 Uri。
+     * null / 空串 / 解析失败 / 铃声已被系统删除（getRingtone 查不到）都回退
+     * 默认闹钟铃声——选过的铃声可能因清理媒体库而消失，别让通知变无声。
+     */
+    internal fun resolveRingtoneUri(context: Context, stored: String?): Uri {
+        val default = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        if (stored.isNullOrBlank()) return default
+        val uri = runCatching { Uri.parse(stored) }.getOrNull() ?: return default
+        return if (RingtoneManager.getRingtone(context, uri) != null) uri else default
+    }
+
+    /** 设置页展示用：当前铃声的名字。null/无效回「默认闹钟铃声」。 */
+    fun ringtoneDisplayName(context: Context, stored: String?): String {
+        if (stored.isNullOrBlank()) return "默认闹钟铃声"
+        val uri = runCatching { Uri.parse(stored) }.getOrNull()
+            ?: return "默认闹钟铃声"
+        val title = RingtoneManager.getRingtone(context, uri)?.getTitle(context)
+        return if (title.isNullOrBlank()) "已选铃声" else title
+    }
 
     fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -70,7 +96,10 @@ object Reminders {
             // 用闹钟音频属性：闹钟类通知在免打扰下默认放行，
             // 而普通提醒类会被静音，晚间那次药最容易因此漏掉。
             setSound(
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+                resolveRingtoneUri(
+                    context,
+                    MedRepository.get(context).data.value.ringtoneUri
+                ),
                 AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(AudioAttributes.USAGE_ALARM)
@@ -90,10 +119,11 @@ object Reminders {
         nm.createNotificationChannel(dose)
         nm.createNotificationChannel(stock)
 
-        // 删掉 v1 通道，否则系统通知设置里会并列两个"服药提醒"让人困惑。
-        // 用户在 v1 上做过的开关不会迁移，这是换通道的既有代价；
-        // 换来的是免打扰下能正常响，对吃药提醒来说更重要。
+        // 删掉 v1/v2 通道，否则系统通知设置里会并列多个"服药提醒"让人困惑。
+        // 用户在旧通道上做过的开关不会迁移，这是换通道的既有代价；
+        // 换来的是免打扰下能正常响、以及自选铃声生效。
         runCatching { nm.deleteNotificationChannel(CHANNEL_DOSE_LEGACY) }
+        runCatching { nm.deleteNotificationChannel(CHANNEL_DOSE_LEGACY_V2) }
     }
 
     fun hasNotificationPermission(context: Context): Boolean =
@@ -615,8 +645,13 @@ object Reminders {
             .setAutoCancel(!ongoing)
             .setOngoing(ongoing)
             .setContentIntent(openApp)
+            // Android 8+ 声音以渠道为准，这里的 setSound 只对 API 24-25（无渠道）
+            // 生效——低版本设备自选铃声也走 resolveRingtoneUri。
             .setSound(
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+                resolveRingtoneUri(
+                    context,
+                    MedRepository.get(context).data.value.ringtoneUri
+                ),
                 AudioManager.STREAM_ALARM
             )
             .setVibrate(longArrayOf(0, 350, 250, 350))

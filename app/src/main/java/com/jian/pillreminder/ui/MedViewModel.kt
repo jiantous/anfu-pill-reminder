@@ -14,6 +14,7 @@ import com.jian.pillreminder.data.TimeOfDay
 import com.jian.pillreminder.domain.DoseItem
 import com.jian.pillreminder.domain.ScheduleEngine
 import com.jian.pillreminder.notify.Reminders
+import com.jian.pillreminder.ui.theme.MedColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -91,7 +92,8 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
         id = UUID.randomUUID().toString(),
         name = "",
         startDate = LocalDate.now().toString(),
-        colorIndex = repo.data.value.medications.size % 8
+        // 新药轮着用色板里的颜色，相邻的药不撞色
+        colorIndex = repo.data.value.medications.size % MedColors.size
     )
 
     fun saveMedication(med: Medication) {
@@ -203,6 +205,8 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
     fun setOngoingNotification(on: Boolean) = repo.setOngoingNotification(on)
 
     fun setUiScale(scale: Float) = repo.setUiScale(scale)
+
+    fun setRingtoneUri(uri: String?) = repo.setRingtoneUri(uri)
 
     fun markSetupGuideShown() = repo.markSetupGuideShown()
 

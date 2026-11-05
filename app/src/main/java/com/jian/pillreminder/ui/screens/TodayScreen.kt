@@ -418,6 +418,7 @@ private fun DoseCard(
 ) {
     val med = item.medication
     val palette = medColorAt(med.colorIndex)
+    val (badgeBg, badgeFg) = palette.colors()
     val isTaken = item.status == DoseStatus.TAKEN
     val isSkipped = item.status == DoseStatus.SKIPPED
     val isOverdue = item.isOverdue(now)
@@ -501,8 +502,8 @@ private fun DoseCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MedBadge(
                     iconIndex = med.iconIndex,
-                    container = palette.container(),
-                    content = palette.content(),
+                    container = badgeBg,
+                    content = badgeFg,
                     size = 46.dp,
                     modifier = Modifier.alpha(if (isTaken || isSkipped) 0.55f else 1f)
                 )

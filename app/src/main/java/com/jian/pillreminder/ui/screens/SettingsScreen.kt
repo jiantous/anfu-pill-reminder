@@ -69,12 +69,18 @@ fun SettingsScreen(
     snoozeMinutes: Int,
     ongoingNotification: Boolean,
     uiScale: Float,
+    /** 当前提醒铃声的显示名（"默认闹钟铃声"或所选铃声标题）。 */
+    ringtoneName: String,
+    /** 是否仍是默认铃声——控制"恢复默认"按钮的可用态。 */
+    ringtoneIsDefault: Boolean,
     logCount: Int,
     busy: Boolean,
     message: String?,
     onSnoozeMinutesChange: (Int) -> Unit,
     onOngoingNotificationChange: (Boolean) -> Unit,
     onUiScaleChange: (Float) -> Unit,
+    onPickRingtone: () -> Unit,
+    onResetRingtone: () -> Unit,
     onExportCsv: (Int?) -> Unit,
     onShareCsv: (Int?) -> Unit,
     onOpenReminderSetup: () -> Unit,
@@ -128,6 +134,26 @@ fun SettingsScreen(
                             label = { Text("$m 分钟") }
                         )
                     }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text("提醒铃声", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "当前：$ringtoneName",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FilledTonalButton(
+                        onClick = onPickRingtone,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("选择铃声") }
+                    FilledTonalButton(
+                        onClick = onResetRingtone,
+                        enabled = !ringtoneIsDefault,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("恢复默认") }
                 }
                 Spacer(Modifier.height(12.dp))
                 FilledTonalButton(

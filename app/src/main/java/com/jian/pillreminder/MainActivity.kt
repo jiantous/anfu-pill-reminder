@@ -72,6 +72,9 @@ import com.jian.pillreminder.data.BackupFile
 import com.jian.pillreminder.data.BackupManager
 import com.jian.pillreminder.data.BackupSummary
 import androidx.core.content.FileProvider
+import androidx.core.content.IntentCompat
+import android.app.Activity
+import android.media.RingtoneManager
 import com.jian.pillreminder.ui.screens.BackupScreen
 import com.jian.pillreminder.ui.screens.EditMedicationScreen
 import com.jian.pillreminder.ui.screens.ImportConfirmDialog
@@ -256,6 +259,25 @@ private fun PillApp(relaunchSignal: Int = 0) {
     ) { granted ->
         refreshHealth()
         if (granted) vm.rescheduleAllAlarms()
+    }
+
+    // 提醒铃声：系统没有现成的 ActivityResultContract，用 StartActivityForResult
+    // 包 ACTION_RINGTONE_PICKER。该 action 虽被标记 deprecated，但系统至今仍在
+    // 各版本响应且无官方替代，打不开时 runCatching 兜底提示。
+    val ringtonePickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val picked = result.data?.let {
+                IntentCompat.getParcelableExtra(
+                    it, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java
+                )
+            }
+            // 选「默认铃声」时系统也返回 null，与存储语义（null=默认）正好一致
+            vm.setRingtoneUri(picked?.toString())
+            // 渠道声音创建后改不了：立即按新铃声重建 v3 渠道（ensureChannels 先删后建）
+            Reminders.ensureChannels(context)
+        }
     }
 
     fun fix(check: ReminderHealth.Check) {
@@ -663,12 +685,48 @@ private fun PillApp(relaunchSignal: Int = 0) {
                     snoozeMinutes = appData.snoozeMinutes,
                     ongoingNotification = appData.ongoingNotification,
                     uiScale = appData.uiScale,
+                    ringtoneName = remember(appData.ringtoneUri) {
+                        Reminders.ringtoneDisplayName(context, appData.ringtoneUri)
+                    },
+                    ringtoneIsDefault = appData.ringtoneUri == null,
                     logCount = appData.logs.size,
                     busy = backupBusy,
                     message = settingsMessage,
                     onSnoozeMinutesChange = { vm.setSnoozeMinutes(it) },
                     onOngoingNotificationChange = { vm.setOngoingNotification(it) },
                     onUiScaleChange = { vm.setUiScale(it) },
+                    onPickRingtone = {
+                        runCatching {
+                            // EXISTING_URI 传当前值让选择器高亮正在用的铃声；
+                            // 每次点开实时读，Activity 重建后也不会拿到旧值
+                            val current = appData.ringtoneUri?.let { Uri.parse(it) }
+                            ringtonePickerLauncher.launch(
+                                Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                                    putExtra(
+                                        RingtoneManager.EXTRA_RINGTONE_TYPE,
+                                        RingtoneManager.TYPE_ALARM
+                                    )
+                                    putExtra(
+                                        RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                                        current
+                                    )
+                                    putExtra(
+                                        RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true
+                                    )
+                                    // 不提供"静音"选项，避免 null 出现两种语义
+                                    putExtra(
+                                        RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false
+                                    )
+                                }
+                            )
+                        }.onFailure {
+                            settingsMessage = "打不开铃声选择器，请在系统通知设置里调整。"
+                        }
+                    },
+                    onResetRingtone = {
+                        vm.setRingtoneUri(null)
+                        Reminders.ensureChannels(context)
+                    },
                     onExportCsv = { days ->
                         pendingCsv = vm.buildCsvContent(days)
                         createCsvLauncher.launch(vm.suggestCsvFileName())
