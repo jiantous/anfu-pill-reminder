@@ -23,6 +23,7 @@ sealed interface Schedule {
 }
 
 /** 与进餐的关系，仅作提示文案。 */
+@kotlinx.serialization.Serializable
 enum class MealRelation(val label: String) {
     NONE("无要求"),
     BEFORE_MEAL("饭前"),

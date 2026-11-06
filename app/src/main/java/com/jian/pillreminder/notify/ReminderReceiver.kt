@@ -102,9 +102,11 @@ class ReminderReceiver : BroadcastReceiver() {
             }
 
             Reminders.ACTION_TAKEN -> {
+                // 打卡前先取库存快照：续药提醒按"跨越阈值"判定，扣完再读就拿不到旧值了
+                val stockBefore = med.stockRemaining
                 repo.logDose(medId, date, time, DoseStatus.TAKEN, System.currentTimeMillis(), syncWrite = true)
                 Reminders.clearDoseOutcome(context, medId, date, time)
-                checkStock(context, medId)
+                checkStock(context, medId, stockBefore)
             }
 
             Reminders.ACTION_SKIP -> {
@@ -119,10 +121,17 @@ class ReminderReceiver : BroadcastReceiver() {
         }
     }
 
-    /** 扣减库存后如果低于阈值就提醒续药。 */
-    private fun checkStock(context: Context, medId: String) {
+    /**
+     * 扣减库存后判断要不要提醒续药——按"跨越阈值"判定
+     * （见 [Reminders.shouldStockAlert]）：库存已经见底后每次打卡
+     * 不再重复弹通知，补药回抬后再次跌破会重新提醒。
+     */
+    private fun checkStock(context: Context, medId: String, stockBefore: Double?) {
         val med = MedRepository.get(context).data.value.medications.firstOrNull { it.id == medId } ?: return
-        val remaining = med.stockRemaining ?: return
-        if (remaining <= med.stockThreshold) Reminders.showStockAlert(context, med)
+        val stockAfter = med.stockRemaining ?: return
+        if (stockBefore == null) return
+        if (Reminders.shouldStockAlert(stockBefore, stockAfter, med.stockThreshold)) {
+            Reminders.showStockAlert(context, med)
+        }
     }
 }

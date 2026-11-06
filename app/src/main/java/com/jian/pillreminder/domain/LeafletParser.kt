@@ -13,6 +13,7 @@ import com.jian.pillreminder.data.TimeOfDay
 object LeafletParser {
 
     /** 提取结果。每个字段都可能为 null，表示没识别出来、需要用户自己填。 */
+    @kotlinx.serialization.Serializable
     data class Result(
         val name: String? = null,
         val dosage: Double? = null,

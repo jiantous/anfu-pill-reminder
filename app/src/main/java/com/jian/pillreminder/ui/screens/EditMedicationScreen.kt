@@ -1,5 +1,6 @@
 package com.jian.pillreminder.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -71,6 +72,7 @@ import com.jian.pillreminder.data.Medication
 import com.jian.pillreminder.data.Schedule
 import com.jian.pillreminder.data.TimeOfDay
 import com.jian.pillreminder.domain.ScheduleEngine
+import com.jian.pillreminder.notify.Reminders
 import com.jian.pillreminder.ui.components.MedBadge
 import com.jian.pillreminder.ui.components.DatePickerDialog
 import com.jian.pillreminder.ui.components.TimePickerDialog
@@ -81,10 +83,6 @@ import com.jian.pillreminder.ui.theme.medColorAt
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
-private enum class FreqTab(val label: String) {
-    DAILY("每天"), WEEKLY("按周"), INTERVAL("间隔"), CYCLE("周期")
-}
 
 internal fun sanitizeDosageInput(raw: String): String {
     val result = StringBuilder()
@@ -105,6 +103,52 @@ internal fun sanitizeDosageInput(raw: String): String {
 internal fun parsePositiveDosage(text: String): Double? =
     text.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 }
 
+/** 用药频率的四档（EditDraftState 持有当前档）。 */
+enum class FreqTab(val label: String) {
+    DAILY("每天"), WEEKLY("按周"), INTERVAL("间隔"), CYCLE("周期")
+}
+
+/**
+ * 编辑表单的可变状态容器。活过旋转/系统回收（由 ViewModel 的台账持有），
+ * 让填了一半的长表单不会因重建而悄悄丢掉。
+ */
+class EditDraftState(initial: Medication) {
+    var med by mutableStateOf(initial)
+    var freqTab by mutableStateOf(
+        when (initial.schedule) {
+            is Schedule.Daily -> FreqTab.DAILY
+            is Schedule.WeekDays -> FreqTab.WEEKLY
+            is Schedule.EveryNDays -> FreqTab.INTERVAL
+            is Schedule.CycleOnOff -> FreqTab.CYCLE
+        }
+    )
+    // 各频率模式的独立输入，切 tab 时不互相清空
+    var weekDays by mutableStateOf(
+        (initial.schedule as? Schedule.WeekDays)?.daysOfWeek ?: setOf(1, 2, 3, 4, 5)
+    )
+    var intervalDays by mutableStateOf(
+        ((initial.schedule as? Schedule.EveryNDays)?.intervalDays ?: 2).toString()
+    )
+    var cycleOn by mutableStateOf(
+        ((initial.schedule as? Schedule.CycleOnOff)?.onDays ?: 21).toString()
+    )
+    var cycleOff by mutableStateOf(
+        ((initial.schedule as? Schedule.CycleOnOff)?.offDays ?: 7).toString()
+    )
+    var dosageText by mutableStateOf(
+        com.jian.pillreminder.notify.Reminders.formatDosage(initial.dosage)
+    )
+    var stockText by mutableStateOf(
+        initial.stockRemaining?.let { com.jian.pillreminder.notify.Reminders.formatDosage(it) } ?: ""
+    )
+    var thresholdText by mutableStateOf(
+        com.jian.pillreminder.notify.Reminders.formatDosage(initial.stockThreshold)
+    )
+    var hasEndDate by mutableStateOf(initial.endDate != null)
+    var endDateText by mutableStateOf(initial.endDate ?: "")
+    var startDateText by mutableStateOf(initial.startDate)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditMedicationScreen(
@@ -116,9 +160,41 @@ fun EditMedicationScreen(
     /** 点「拍说明书识别」时调用；为 null 时不显示该入口。 */
     onScanLeaflet: (() -> Unit)? = null,
     /** OCR 识别到但需要覆盖到频率区的信息（预填时用）。 */
-    prefillNote: String? = null
+    prefillNote: String? = null,
+    /** 表单草稿（活过旋转/系统回收，见 MedViewModel.editDraftFor）。 */
+    draftState: EditDraftState
 ) {
-    var draft by remember { mutableStateOf(initial) }
+    // 表单主体状态全部在 draftState 里，旋转/系统回收重建不丢
+    val draft = draftState.med
+    val freqTab = draftState.freqTab
+    val weekDays = draftState.weekDays
+    val intervalDays = draftState.intervalDays
+    val cycleOn = draftState.cycleOn
+    val cycleOff = draftState.cycleOff
+    val dosageText = draftState.dosageText
+    val stockText = draftState.stockText
+    val thresholdText = draftState.thresholdText
+    val hasEndDate = draftState.hasEndDate
+    // 结束日期初始值：只对"本来就设了结束日期"的药取 initial 值。
+    // 曾经的默认值"今天+1个月"有个坑：编辑老药时随手开了又没填，保存后
+    // 疗程被悄悄改成一个月——用户根本不知道自己改了什么。现在开着开关
+    // 但没日期就不给保存，逼着用户明确选一天。
+    val endDateText = draftState.endDateText
+    val startDateText = draftState.startDateText
+
+    fun updateMed(m: Medication) { draftState.med = m }
+    fun updateFreqTab(t: FreqTab) { draftState.freqTab = t }
+    fun updateWeekDays(w: Set<Int>) { draftState.weekDays = w }
+    fun updateIntervalDays(v: String) { draftState.intervalDays = v }
+    fun updateCycleOn(v: String) { draftState.cycleOn = v }
+    fun updateCycleOff(v: String) { draftState.cycleOff = v }
+    fun updateDosageText(v: String) { draftState.dosageText = v }
+    fun updateStockText(v: String) { draftState.stockText = v }
+    fun updateThresholdText(v: String) { draftState.thresholdText = v }
+    fun updateHasEndDate(b: Boolean) { draftState.hasEndDate = b }
+    fun updateEndDateText(v: String) { draftState.endDateText = v }
+    fun updateStartDateText(v: String) { draftState.startDateText = v }
+
     var showTimePicker by remember { mutableStateOf(false) }
     var editingTimeIndex by remember { mutableStateOf<Int?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -127,49 +203,10 @@ fun EditMedicationScreen(
     // 库存填了内容但不是有效数字（如 "1.2.3"）时拦截保存，
     // 不能静默当作"不管理库存"——那会把用户的库存数据悄悄丢掉
     var stockError by remember { mutableStateOf(false) }
+    var endDateError by remember { mutableStateOf(false) }
     // 用户手动挑过图标之后，改单位就不再自动换图标了。
     // 编辑已有药品时视为"已挑过"——那个图标本来就是他之前定的。
     var iconPickedByUser by remember { mutableStateOf(!isNew) }
-
-    var freqTab by remember {
-        mutableStateOf(
-            when (initial.schedule) {
-                is Schedule.Daily -> FreqTab.DAILY
-                is Schedule.WeekDays -> FreqTab.WEEKLY
-                is Schedule.EveryNDays -> FreqTab.INTERVAL
-                is Schedule.CycleOnOff -> FreqTab.CYCLE
-            }
-        )
-    }
-    // 各频率模式的独立输入状态，切 tab 时不互相清空
-    var weekDays by remember {
-        mutableStateOf((initial.schedule as? Schedule.WeekDays)?.daysOfWeek ?: setOf(1, 2, 3, 4, 5))
-    }
-    var intervalDays by remember {
-        mutableStateOf(((initial.schedule as? Schedule.EveryNDays)?.intervalDays ?: 2).toString())
-    }
-    var cycleOn by remember {
-        mutableStateOf(((initial.schedule as? Schedule.CycleOnOff)?.onDays ?: 21).toString())
-    }
-    var cycleOff by remember {
-        mutableStateOf(((initial.schedule as? Schedule.CycleOnOff)?.offDays ?: 7).toString())
-    }
-    var dosageText by remember {
-        mutableStateOf(com.jian.pillreminder.notify.Reminders.formatDosage(initial.dosage))
-    }
-    var stockText by remember {
-        mutableStateOf(initial.stockRemaining?.let { com.jian.pillreminder.notify.Reminders.formatDosage(it) } ?: "")
-    }
-    var thresholdText by remember {
-        mutableStateOf(com.jian.pillreminder.notify.Reminders.formatDosage(initial.stockThreshold))
-    }
-    var hasEndDate by remember { mutableStateOf(initial.endDate != null) }
-    // 结束日期初始值：只对"本来就设了结束日期"的药取 initial 值。
-    // 曾经的默认值"今天+1个月"有个坑：编辑老药时随手开了又没填，保存后
-    // 疗程被悄悄改成一个月——用户根本不知道自己改了什么。现在开着开关
-    // 但没日期就不给保存，逼着用户明确选一天。
-    var endDateText by remember { mutableStateOf(initial.endDate ?: "") }
-    var startDateText by remember { mutableStateOf(initial.startDate) }
     /** 正在填哪个日期，null = 没在填。 */
     var editingDate by remember { mutableStateOf<DateField?>(null) }
 
@@ -182,6 +219,40 @@ fun EditMedicationScreen(
             (cycleOff.toIntOrNull() ?: 7).coerceIn(0, 365)
         )
     }
+
+    /** 当前输入与 initial 是否不同（用于返回挽留）。 */
+    fun isDirty(): Boolean {
+        if (draft != initial) return true
+        // 频率区：draft.schedule 只在 commit() 里重建，必须单独比对，
+        // 否则"只改了周几/间隔天数"不触发挽留
+        if (buildSchedule() != initial.schedule) return true
+        // 新建页"没动过"：所有输入都是 EditDraftState 的出厂值。
+        // 不能用"字段为空"判断——剂量框出厂就是 "1"
+        if (isNew) {
+            val untouched = draft.name.isBlank() && draft.note.isBlank() &&
+                draft.times == listOf(TimeOfDay(8, 0)) &&
+                buildSchedule() == Schedule.Daily &&
+                dosageText == Reminders.formatDosage(initial.dosage) &&
+                stockText == "" &&
+                thresholdText == Reminders.formatDosage(initial.stockThreshold) &&
+                !hasEndDate && startDateText == initial.startDate &&
+                draft.colorIndex == initial.colorIndex && draft.iconIndex == initial.iconIndex
+            if (untouched) return false
+        }
+        return dosageText != Reminders.formatDosage(initial.dosage) ||
+            stockText != (initial.stockRemaining?.let { Reminders.formatDosage(it) } ?: "") ||
+            thresholdText != Reminders.formatDosage(initial.stockThreshold) ||
+            hasEndDate != (initial.endDate != null) ||
+            endDateText != (initial.endDate ?: "") ||
+            startDateText != initial.startDate
+    }
+
+    // 有未保存修改时拦截返回：长表单（尤其 OCR 预填后）误触返回键内容全丢
+    var showDiscardConfirm by remember { mutableStateOf(false) }
+    fun requestBack() {
+        if (isDirty()) showDiscardConfirm = true else onBack()
+    }
+    BackHandler { requestBack() }
 
     fun commit() {
         if (draft.name.isBlank()) {
@@ -199,8 +270,10 @@ fun EditMedicationScreen(
             stockError = true
             return
         }
-        // 开了"结束日期"却没选日子：不猜、不默认，直接拦下让用户去选
+        // 开了"结束日期"却没选日子：不猜、不默认，弹选择器让用户选；
+        // 用户直接取消对话框时行内红字说明为什么没保存成
         if (hasEndDate && endDateText.isBlank()) {
+            endDateError = true
             editingDate = DateField.END
             return
         }
@@ -221,7 +294,7 @@ fun EditMedicationScreen(
             TopAppBar(
                 title = { Text(if (isNew) "添加药品" else "编辑药品") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { requestBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -332,7 +405,7 @@ fun EditMedicationScreen(
             SettingCard("基本信息", 0, onPlaced = { sectionOffsets[0] = it }) {
                 OutlinedTextField(
                     value = draft.name,
-                    onValueChange = { draft = draft.copy(name = it); nameError = false },
+                    onValueChange = { updateMed(draft.copy(name = it)); nameError = false },
                     label = { Text("药品名称") },
                     placeholder = { Text("例如：阿司匹林") },
                     isError = nameError,
@@ -347,7 +420,7 @@ fun EditMedicationScreen(
                     OutlinedTextField(
                         value = dosageText,
                         onValueChange = {
-                            dosageText = sanitizeDosageInput(it)
+                            updateDosageText(sanitizeDosageInput(it))
                             dosageError = false
                         },
                         label = { Text("单次剂量") },
@@ -366,11 +439,11 @@ fun EditMedicationScreen(
                             val u = raw.take(6)
                             // 图标按剂型分类，而单位就是剂型的直接线索：填"粒"多半是胶囊。
                             // 只在用户还没手动挑过图标时跟着变，挑过就尊重他的选择。
-                            draft = if (iconPickedByUser) {
+                            updateMed(if (iconPickedByUser) {
                                 draft.copy(unit = u)
                             } else {
                                 draft.copy(unit = u, iconIndex = suggestIconForUnit(u))
-                            }
+                            })
                         },
                         label = { Text("单位") },
                         placeholder = { Text("片") },
@@ -381,7 +454,7 @@ fun EditMedicationScreen(
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = draft.note,
-                    onValueChange = { draft = draft.copy(note = it) },
+                    onValueChange = { updateMed(draft.copy(note = it)) },
                     label = { Text("备注（可选）") },
                     placeholder = { Text("例如：随餐服用，避免与钙片同服") },
                     minLines = 2,
@@ -420,7 +493,7 @@ fun EditMedicationScreen(
                                         .size(18.dp)
                                         .clickable {
                                             if (draft.times.size > 1) {
-                                                draft = draft.copy(times = draft.times - t)
+                                                updateMed(draft.copy(times = draft.times - t))
                                             }
                                         }
                                 )
@@ -444,7 +517,7 @@ fun EditMedicationScreen(
                     MealRelation.entries.forEach { rel ->
                         FilterChip(
                             selected = draft.mealRelation == rel,
-                            onClick = { draft = draft.copy(mealRelation = rel) },
+                            onClick = { updateMed(draft.copy(mealRelation = rel)) },
                             label = { Text(rel.label) },
                             leadingIcon = if (draft.mealRelation == rel) {
                                 { Icon(Icons.Filled.Check, null, Modifier.size(18.dp)) }
@@ -460,7 +533,7 @@ fun EditMedicationScreen(
                     FreqTab.entries.forEachIndexed { index, tab ->
                         SegmentedButton(
                             selected = freqTab == tab,
-                            onClick = { freqTab = tab },
+                            onClick = { updateFreqTab(tab) },
                             shape = SegmentedButtonDefaults.itemShape(index, FreqTab.entries.size),
                             label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) }
                         )
@@ -495,7 +568,7 @@ fun EditMedicationScreen(
                                             else MaterialTheme.colorScheme.surfaceVariant
                                         )
                                         .clickable {
-                                            weekDays = if (selected) weekDays - d else weekDays + d
+                                            updateWeekDays(if (selected) weekDays - d else weekDays + d)
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -516,7 +589,7 @@ fun EditMedicationScreen(
                             Spacer(Modifier.width(12.dp))
                             OutlinedTextField(
                                 value = intervalDays,
-                                onValueChange = { intervalDays = it.filter { c -> c.isDigit() }.take(3) },
+                                onValueChange = { updateIntervalDays(it.filter { c -> c.isDigit() }.take(3)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 modifier = Modifier.width(90.dp)
@@ -538,7 +611,7 @@ fun EditMedicationScreen(
                             Spacer(Modifier.width(8.dp))
                             OutlinedTextField(
                                 value = cycleOn,
-                                onValueChange = { cycleOn = it.filter { c -> c.isDigit() }.take(3) },
+                                onValueChange = { updateCycleOn(it.filter { c -> c.isDigit() }.take(3)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 modifier = Modifier.width(80.dp)
@@ -548,7 +621,7 @@ fun EditMedicationScreen(
                             Spacer(Modifier.width(8.dp))
                             OutlinedTextField(
                                 value = cycleOff,
-                                onValueChange = { cycleOff = it.filter { c -> c.isDigit() }.take(3) },
+                                onValueChange = { updateCycleOff(it.filter { c -> c.isDigit() }.take(3)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 modifier = Modifier.width(80.dp)
@@ -589,7 +662,7 @@ fun EditMedicationScreen(
                         )
                     },
                     trailingContent = {
-                        Switch(checked = hasEndDate, onCheckedChange = { hasEndDate = it })
+                        Switch(checked = hasEndDate, onCheckedChange = { updateHasEndDate(it) })
                     },
                     colors = androidx.compose.material3.ListItemDefaults.colors(
                         containerColor = androidx.compose.ui.graphics.Color.Transparent
@@ -599,8 +672,12 @@ fun EditMedicationScreen(
                     DateRow(
                         label = "结束日期",
                         dateText = endDateText,
-                        hint = if (endDateText.isBlank()) "还没选日期" else null,
-                        onClick = { editingDate = DateField.END }
+                        // 保存被拦的原因要看得见：取消日期对话框后行内红字
+                        hint = if (endDateText.isBlank())
+                            (if (endDateError) "请先选择结束日期，否则无法保存" else "还没选日期")
+                        else null,
+                        hintIsError = endDateError,
+                        onClick = { editingDate = DateField.END; endDateError = false }
                     )
                 }
             }
@@ -613,7 +690,7 @@ fun EditMedicationScreen(
                     trailingContent = {
                         Switch(
                             checked = draft.remindersEnabled,
-                            onCheckedChange = { draft = draft.copy(remindersEnabled = it) }
+                            onCheckedChange = { updateMed(draft.copy(remindersEnabled = it)) }
                         )
                     },
                     colors = androidx.compose.material3.ListItemDefaults.colors(
@@ -625,7 +702,7 @@ fun EditMedicationScreen(
                     OutlinedTextField(
                         value = stockText,
                         onValueChange = {
-                            stockText = sanitizeDosageInput(it)
+                            updateStockText(sanitizeDosageInput(it))
                             stockError = false
                         },
                         label = { Text("现有库存") },
@@ -641,7 +718,7 @@ fun EditMedicationScreen(
                     Spacer(Modifier.width(12.dp))
                     OutlinedTextField(
                         value = thresholdText,
-                        onValueChange = { thresholdText = sanitizeDosageInput(it) },
+                        onValueChange = { updateThresholdText(sanitizeDosageInput(it)) },
                         label = { Text("续药提醒线") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
@@ -673,7 +750,7 @@ fun EditMedicationScreen(
                                         CircleShape
                                     ) else Modifier
                                 )
-                                .clickable { draft = draft.copy(colorIndex = index) },
+                                .clickable { updateMed(draft.copy(colorIndex = index)) },
                             contentAlignment = Alignment.Center
                         ) {
                             if (selected) {
@@ -705,7 +782,7 @@ fun EditMedicationScreen(
                                     else MaterialTheme.colorScheme.surfaceVariant
                                 )
                                 .clickable {
-                                    draft = draft.copy(iconIndex = index)
+                                    updateMed(draft.copy(iconIndex = index))
                                     iconPickedByUser = true
                                 },
                             contentAlignment = Alignment.Center
@@ -747,11 +824,11 @@ fun EditMedicationScreen(
             onDismiss = { showTimePicker = false; editingTimeIndex = null },
             onConfirm = { h, m ->
                 val newTime = TimeOfDay(h, m)
-                draft = if (existing != null) {
+                updateMed(if (existing != null) {
                     draft.copy(times = (draft.times - existing + newTime).distinct().sorted())
                 } else {
                     draft.copy(times = (draft.times + newTime).distinct().sorted())
-                }
+                })
                 showTimePicker = false
                 editingTimeIndex = null
             }
@@ -777,10 +854,27 @@ fun EditMedicationScreen(
             onDismiss = { editingDate = null },
             onConfirm = { picked ->
                 when (field) {
-                    DateField.START -> startDateText = picked.toString()
-                    DateField.END -> endDateText = picked.toString()
+                    DateField.START -> updateStartDateText(picked.toString())
+                    DateField.END -> updateEndDateText(picked.toString())
                 }
                 editingDate = null
+            }
+        )
+    }
+
+    // 有未保存修改时的返回挽留
+    if (showDiscardConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDiscardConfirm = false },
+            title = { Text("放弃修改？") },
+            text = { Text("你填写的内容还没有保存，离开后会丢失。") },
+            confirmButton = {
+                TextButton(onClick = { showDiscardConfirm = false; onBack() }) {
+                    Text("放弃", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardConfirm = false }) { Text("继续编辑") }
             }
         )
     }
@@ -789,7 +883,7 @@ fun EditMedicationScreen(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("删除「${draft.name}」？") },
-            text = { Text("会同时删掉所有服药记录，无法恢复。") },
+            text = { Text("这会同时删掉它的所有服药记录，无法恢复。如果只是暂时停药，建议用药箱页菜单里的「停用」。") },
             confirmButton = {
                 TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
                     Text("删除", color = MaterialTheme.colorScheme.error)
@@ -820,7 +914,9 @@ private fun DateRow(
     label: String,
     dateText: String,
     hint: String?,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    /** hint 是否按错误样式（红字）显示，如"保存被拦"的提示。 */
+    hintIsError: Boolean = false
 ) {
     val pretty = remember(dateText) {
         runCatching {
@@ -846,7 +942,8 @@ private fun DateRow(
                 Text(
                     hint,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (hintIsError) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

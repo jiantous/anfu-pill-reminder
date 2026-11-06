@@ -688,6 +688,26 @@ object Reminders {
         runCatching { nm.cancel(med.id.hashCode() and 0x0FFFFFFF) }
     }
 
+    /**
+     * 续药提醒的触发判定。
+     *
+     * 旧版"扣完只要 <= 阈值就提醒"有两个毛病：库存扣到 0 后每次打卡都弹
+     * 同样的通知（同 id 覆盖表现为"一直挂着甩不掉"）。纯"跨越阈值"
+     * （充足→不足只弹一次）又有另一个毛病：库存本来就低于阈值的药
+     * （比如装新版时剩 1 片、阈值 5），继续扣到 0 也永远不提醒。
+     *
+     * 规则合并两者：
+     * - 跨越阈值（>阈值 扣到 ≤阈值）→ 提醒，之后同样的低库存不再重复弹；
+     * - 库存降到 0（扣前 > 0、扣后 = 0）→ 提醒，"已经吃完了"值得单独说一次；
+     * - 已经是 0 还在打卡（0 → 0）→ 不弹，重复通知没有信息量。
+     * 补药回抬后再次跌破会自然重新触发，不需要额外状态。
+     */
+    fun shouldStockAlert(stockBefore: Double, stockAfter: Double, threshold: Double): Boolean {
+        val crossedDown = stockBefore > threshold && stockAfter <= threshold
+        val hitZero = stockBefore > 0.0 && stockAfter <= 0.0
+        return crossedDown || hitZero
+    }
+
     // 同 showResumeNotification：权限已在函数开头检查，压掉 Lint 误报。
     @SuppressLint("MissingPermission")
     fun showStockAlert(context: Context, med: Medication) {

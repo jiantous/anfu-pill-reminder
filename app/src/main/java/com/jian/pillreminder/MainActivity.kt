@@ -51,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -97,10 +98,22 @@ class MainActivity : ComponentActivity() {
     /** 每次从桌面图标/通知重新进入时自增，用来把导航栈重置回今日清单。 */
     private val relaunchSignal = mutableIntStateOf(0)
 
+    /**
+     * 本次 Activity 创建是不是冷启动（进程新起）。
+     * savedInstanceState 为 null = 冷启动；非 null = 旋转/系统回收重建，
+     * 此时导航栈要恢复（编辑页的长表单不丢），不能强制回今天页。
+     * 用 Activity 级字段传给 Compose——Compose 侧的 remember 每次重建
+     * 都重新初始化，分不清这两种场景（曾经因此把旋转当成冷启动处理）。
+     */
+    private var isColdStart = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 不恢复上次的导航栈：吃药提醒每次打开都应先看到"今天要吃什么"，
-        // 而不是停在上次离开时的编辑页。传 null 让 Compose Navigation 从起始页开始。
-        super.onCreate(null)
+        // 冷启动（进程新起）savedInstanceState 为 null，Navigation 从起始页
+        // （今天）开始——"每次打开先看到今天要吃什么"不变。
+        // 旋转/系统回收重建时传真实 bundle，配合 rememberNavController
+        // 恢复返回栈，编辑页的长表单才不会因重建丢失。
+        super.onCreate(savedInstanceState)
+        isColdStart = savedInstanceState == null
         enableEdgeToEdge()
         Reminders.ensureChannels(this)
         setContent {
@@ -109,7 +122,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    PillApp(relaunchSignal.intValue)
+                    PillApp(relaunchSignal.intValue, isColdStart)
                 }
             }
         }
@@ -138,39 +151,75 @@ private sealed class Dest(val route: String, val label: String) {
     data object About : Dest("about", "关于")
 }
 
+/**
+ * OCR 结果的 rememberSaveable Saver：Result 嵌套 Schedule/枚举/列表，
+ * 不能直接进 Bundle，走 JSON 序列化（null 存空串）。
+ * 旋转/系统回收重建后预填结果不丢。
+ */
+private val LeafletResultSaver = androidx.compose.runtime.saveable.Saver<
+    com.jian.pillreminder.domain.LeafletParser.Result?,
+    String
+    >(
+    save = { r ->
+        if (r == null) "" else {
+            "j:" + kotlinx.serialization.json.Json.encodeToString(
+                com.jian.pillreminder.domain.LeafletParser.Result.serializer(), r
+            )
+        }
+    },
+    restore = { s ->
+        if (s.isNullOrEmpty()) null
+        else runCatching {
+            kotlinx.serialization.json.Json.decodeFromString(
+                com.jian.pillreminder.domain.LeafletParser.Result.serializer(), s.removePrefix("j:")
+            )
+        }.getOrNull()
+    }
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PillApp(relaunchSignal: Int = 0) {
+private fun PillApp(relaunchSignal: Int = 0, isColdStart: Boolean = true) {
     val vm: MedViewModel = viewModel()
-    // 用 remember 而非 rememberSaveable 语义的 rememberNavController：
-    // 后者会从 SavedStateRegistry 恢复上次的 back stack，导致重开 App 停在编辑页。
-    // 吃药提醒每次打开都应落在今日清单，所以这里每个进程都新建一个干净的控制器。
-    val context0 = LocalContext.current
-    val nav = remember {
-        androidx.navigation.NavHostController(context0).apply {
-            navigatorProvider.addNavigator(androidx.navigation.compose.ComposeNavigator())
-            navigatorProvider.addNavigator(androidx.navigation.compose.DialogNavigator())
-        }
+    // rememberNavController：旋转/系统回收重建时返回栈自动恢复（编辑页不丢）；
+    // 冷启动兜底回今天页（下方 LaunchedEffect），"每次打开先看到今天"不变
+    val nav = androidx.navigation.compose.rememberNavController()
+
+    // OCR 识别结果的交接站：扫描页写入，编辑页读取后预填表单。
+    // rememberSaveable + JSON Saver：旋转/回收重建时识别结果不丢
+    var scanResult by rememberSaveable(stateSaver = LeafletResultSaver) {
+        mutableStateOf<com.jian.pillreminder.domain.LeafletParser.Result?>(null)
     }
-    // OCR 识别结果的交接站：扫描页写入，编辑页读取后预填表单
-    var scanResult by remember { mutableStateOf<com.jian.pillreminder.domain.LeafletParser.Result?>(null) }
     // 正在编辑的药品 id（null = 新建）。放在 state 里而不是路由参数里，
     // 避免带参路由被 Navigation 恢复导致重开 App 直接落在编辑页。
-    var editingId by remember { mutableStateOf<String?>(null) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
 
     val context = LocalContext.current
 
-    // 首次进入：把闹钟排上（示例数据改为用户在空状态里主动选择添加）
+    // 首次进入：把闹钟排上（示例数据改为用户在空状态里主动选择添加）。
+    // 冷启动兜底：冷启动（isColdStart，Activity 侧判定）且恢复出了非今天
+    // 的栈时强制回今天页。旋转/回收重建（isColdStart=false）不进这段——
+    // 导航栈恢复是预期行为，编辑流程不能被掐断。
+    // 强制回今天页时台账草稿一并作废，否则下次加药弹残稿触发挽留。
     LaunchedEffect(Unit) {
         vm.rescheduleAllAlarms()
+        if (isColdStart && route != Dest.Today.route) {
+            vm.clearAllEditDrafts()
+            nav.navigate(Dest.Today.route) {
+                popUpTo(nav.graph.id) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
     }
 
     // 从桌面图标/通知重新进入时（onNewIntent）回到今日清单
     LaunchedEffect(relaunchSignal) {
         if (relaunchSignal > 0) {
             scanResult = null
+            // 用户已离开编辑流程，半截草稿作废——不清下次加药会弹残稿
+            vm.clearAllEditDrafts()
             nav.navigate(Dest.Today.route) {
                 popUpTo(nav.graph.id) { inclusive = true }
                 launchSingleTop = true
@@ -259,6 +308,33 @@ private fun PillApp(relaunchSignal: Int = 0) {
     ) { granted ->
         refreshHealth()
         if (granted) vm.rescheduleAllAlarms()
+    }
+
+    // 分享服药记录 CSV：统计页入口用（失败走 Toast——统计页没有消息展示位）
+    fun shareCsv(days: Int?) {
+        runCatching {
+            val dir = java.io.File(context.cacheDir, "backup").apply { mkdirs() }
+            val f = java.io.File(dir, vm.suggestCsvFileName())
+            f.writeText(vm.buildCsvContent(days))
+            val shareUri = FileProvider.getUriForFile(
+                context, context.packageName + ".fileprovider", f
+            )
+            context.startActivity(
+                Intent.createChooser(
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "text/csv"
+                        putExtra(Intent.EXTRA_STREAM, shareUri)
+                        putExtra(Intent.EXTRA_SUBJECT, "服药记录")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    },
+                    "分享服药记录"
+                )
+            )
+        }.onFailure {
+            android.widget.Toast.makeText(
+                context, "分享失败：" + (it.message ?: "未知原因"), android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     // 提醒铃声：系统没有现成的 ActivityResultContract，用 StartActivityForResult
@@ -524,6 +600,7 @@ private fun PillApp(relaunchSignal: Int = 0) {
                     vm = vm,
                     modifier = Modifier.nestedScroll(topBarScrollBehavior.nestedScrollConnection),
                     onOpenMedication = { id -> editingId = id; nav.navigate(Dest.Edit.route) },
+                    onOpenMeds = { nav.navigate(Dest.Meds.route) { launchSingleTop = true } },
                     permissionBanner = run {
                         val pending = healthChecks.filterNot { it.granted }
                         val showHealth = pending.isNotEmpty() && !appData.healthBannerDismissed
@@ -554,7 +631,9 @@ private fun PillApp(relaunchSignal: Int = 0) {
             composable(Dest.History.route) {
                 HistoryScreen(
                     vm = vm,
-                    modifier = Modifier.nestedScroll(topBarScrollBehavior.nestedScrollConnection)
+                    modifier = Modifier.nestedScroll(topBarScrollBehavior.nestedScrollConnection),
+                    // 统计页导出：和设置页同一条分享管道
+                    onExportCsv = { days -> shareCsv(days) }
                 )
             }
 
@@ -562,7 +641,10 @@ private fun PillApp(relaunchSignal: Int = 0) {
                 val id = editingId
                 val existing = vm.medicationById(id)
                 val ocr = scanResult
-                // 新建时只生成一次草稿；有 OCR 结果就把识别到的字段预填进去
+                // 新建时只生成一次草稿；有 OCR 结果就把识别到的字段预填进去。
+                // 草稿存 ViewModel 台账：旋转/回收重建不丢；OCR 到达时强制 reset
+                //（getOrPut 先建优先会把进扫描前的空白草稿保住，识别结果进不了表单）
+                val draftKey = id ?: "new"
                 val draft = remember(id, ocr) {
                     val base = existing ?: vm.newMedicationDraft()
                     if (existing != null || ocr == null) base else base.copy(
@@ -576,6 +658,8 @@ private fun PillApp(relaunchSignal: Int = 0) {
                         mealRelation = ocr.mealRelation ?: base.mealRelation
                     )
                 }
+                val draftState = if (ocr != null) vm.resetEditDraft(draftKey, draft)
+                else vm.editDraftFor(draftKey, draft)
                 val note = remember(ocr, existing) {
                     // 示例药不排闹钟，得说清楚，否则用户以为提醒坏了
                     if (existing?.isSample == true) {
@@ -599,20 +683,23 @@ private fun PillApp(relaunchSignal: Int = 0) {
                     isNew = existing == null,
                     onSave = { med ->
                         vm.saveMedication(med)
+                        vm.clearEditDraft(draftKey)
                         scanResult = null
                         nav.popBackStack()
                     },
                     onDelete = existing?.let {
                         {
                             vm.deleteMedication(it)
+                            vm.clearEditDraft(draftKey)
                             nav.popBackStack()
                         }
                     },
-                    onBack = { scanResult = null; nav.popBackStack() },
+                    onBack = { scanResult = null; vm.clearEditDraft(draftKey); nav.popBackStack() },
                     onScanLeaflet = if (existing == null) {
                         { nav.navigate(Dest.Scan.route) }
                     } else null,
-                    prefillNote = note
+                    prefillNote = note,
+                    draftState = draftState
                 )
             }
 
@@ -726,34 +813,6 @@ private fun PillApp(relaunchSignal: Int = 0) {
                     onResetRingtone = {
                         vm.setRingtoneUri(null)
                         Reminders.ensureChannels(context)
-                    },
-                    onExportCsv = { days ->
-                        pendingCsv = vm.buildCsvContent(days)
-                        createCsvLauncher.launch(vm.suggestCsvFileName())
-                    },
-                    onShareCsv = { days ->
-                        // 和分享备份同一条路子：写到缓存目录再交给 FileProvider
-                        runCatching {
-                            val dir = java.io.File(context.cacheDir, "backup").apply { mkdirs() }
-                            val f = java.io.File(dir, vm.suggestCsvFileName())
-                            f.writeText(vm.buildCsvContent(days))
-                            val shareUri = FileProvider.getUriForFile(
-                                context, context.packageName + ".fileprovider", f
-                            )
-                            context.startActivity(
-                                Intent.createChooser(
-                                    Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/csv"
-                                        putExtra(Intent.EXTRA_STREAM, shareUri)
-                                        putExtra(Intent.EXTRA_SUBJECT, "服药记录")
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    },
-                                    "分享服药记录"
-                                )
-                            )
-                        }.onFailure {
-                            settingsMessage = "分享失败：" + (it.message ?: "未知原因")
-                        }
                     },
                     onOpenReminderSetup = { nav.navigate(Dest.Setup.route) },
                     onClearMessage = { settingsMessage = null },

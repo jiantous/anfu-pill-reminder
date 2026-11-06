@@ -52,10 +52,7 @@ import com.jian.pillreminder.ui.components.SwitchRow
 
 // 档位表在 data.SNOOZE_OPTIONS，和默认值放在一起，避免两处不同步。
 // 界面缩放改为 80%~130%、5% 步进的 Slider（范围常量同在 data 里）。
-
-/** CSV 导出的时间范围选项。null = 全部历史。 */
-private val CsvRanges: List<Pair<Int?, String>> =
-    listOf(7 to "近 7 天", 30 to "近 30 天", 90 to "近 90 天", null to "全部")
+// CSV 导出入口已移至统计页（SettingsSection "数据" 只留备份）。
 
 /**
  * 设置页。
@@ -81,16 +78,12 @@ fun SettingsScreen(
     onUiScaleChange: (Float) -> Unit,
     onPickRingtone: () -> Unit,
     onResetRingtone: () -> Unit,
-    onExportCsv: (Int?) -> Unit,
-    onShareCsv: (Int?) -> Unit,
     onOpenReminderSetup: () -> Unit,
     onClearMessage: () -> Unit,
     onOpenBackup: () -> Unit,
     onOpenAbout: () -> Unit,
     onBack: () -> Unit
 ) {
-    var csvRangeIndex by remember { mutableIntStateOf(1) }
-    val selectedRange = CsvRanges[csvRangeIndex].first
 
     Scaffold(
         topBar = {
@@ -204,48 +197,8 @@ fun SettingsScreen(
 
             // ---- 数据 ----
             SettingsSection("数据") {
-                Text(
-                    "导出为 CSV 表格，可用 Excel 打开。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    CsvRanges.forEachIndexed { i, (_, label) ->
-                        FilterChip(
-                            selected = csvRangeIndex == i,
-                            onClick = { csvRangeIndex = i },
-                            label = { Text(label) }
-                        )
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FilledTonalButton(
-                        onClick = { onExportCsv(selectedRange) },
-                        enabled = !busy,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("另存为")
-                    }
-                    FilledTonalButton(
-                        onClick = { onShareCsv(selectedRange) },
-                        enabled = !busy,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Filled.Share, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("分享")
-                    }
-                }
-
-                // 备份与恢复
-                Spacer(Modifier.height(16.dp))
+                // CSV 导出入口已移到统计页（与"看数据→导数据"的心智一致），
+                // 这里只留备份恢复，避免两处重复入口
                 Text(
                     "备份 JSON 格式文件存档，导入可恢复。",
                     style = MaterialTheme.typography.bodySmall,

@@ -1,6 +1,7 @@
 package com.jian.pillreminder.ui
 
 import android.app.Application
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jian.pillreminder.data.AppData
@@ -14,6 +15,7 @@ import com.jian.pillreminder.data.TimeOfDay
 import com.jian.pillreminder.domain.DoseItem
 import com.jian.pillreminder.domain.ScheduleEngine
 import com.jian.pillreminder.notify.Reminders
+import com.jian.pillreminder.ui.screens.EditDraftState
 import com.jian.pillreminder.ui.theme.MedColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,11 +71,12 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
             d.medications.sortedWith(compareBy({ it.archived }, { it.name }))
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** 库存告警：启用了库存管理且已低于阈值的药。 */
+    /** 库存告警：启用了库存管理且已低于阈值的药。示例药不算——它不会真提醒。 */
     val lowStockMedications: StateFlow<List<Medication>> =
         combine(repo.data, _selectedDate) { d, _ ->
             d.medications.filter { m ->
-                !m.archived && m.stockRemaining != null && m.stockRemaining <= m.stockThreshold
+                !m.archived && !m.isSample &&
+                    m.stockRemaining != null && m.stockRemaining <= m.stockThreshold
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -95,6 +98,38 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
         // 新药轮着用色板里的颜色，相邻的药不撞色
         colorIndex = repo.data.value.medications.size % MedColors.size
     )
+
+    /**
+     * 编辑页的草稿台账。为什么放 ViewModel 而不是 rememberSaveable：
+     * 冷启动刻意回今天页（编辑态不恢复）；旋转/系统回收重建时 ViewModel
+     * 天然存活，配合 rememberSaveable 的 nav/editingId 能把用户带回编辑页。
+     * key = 药品 id（新建统一用 "new"），退出编辑页时清掉。
+     */
+    private val _editDrafts = mutableStateMapOf<String, EditDraftState>()
+    val editDrafts: Map<String, EditDraftState> get() = _editDrafts
+
+    fun editDraftFor(id: String, initial: Medication): EditDraftState =
+        _editDrafts.getOrPut(id) { EditDraftState(initial) }
+
+    /**
+     * 用新的 initial 强制重建台账项。给 OCR 用：扫描结果到达时表单必须
+     * 反映识别内容——getOrPut 的"先建优先"会保住进扫描前的空白草稿，
+     * 识别结果反而被丢掉。
+     */
+    fun resetEditDraft(id: String, initial: Medication): EditDraftState {
+        val fresh = EditDraftState(initial)
+        _editDrafts[id] = fresh
+        return fresh
+    }
+
+    fun clearEditDraft(id: String) {
+        _editDrafts.remove(id)
+    }
+
+    /** 回桌面重开等场景：用户已离开编辑流程，残稿全部作废。 */
+    fun clearAllEditDrafts() {
+        _editDrafts.clear()
+    }
 
     fun saveMedication(med: Medication) {
         val normalized = med.copy(
@@ -147,7 +182,14 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
         mark(item, next)
     }
 
+    /** 清除一次服药的记录（回到"待服用"），用于明细页撤销。 */
+    fun clearDose(item: DoseItem) = mark(item, DoseStatus.PENDING)
+
     private fun mark(item: DoseItem, status: DoseStatus) {
+        // 打卡前先取库存快照：续药提醒要看"跨越"（充足→不足），
+        // 扣完再读就已经拿不到旧值了
+        val stockBefore = item.medication.stockRemaining
+
         repo.logDose(
             medicationId = item.medication.id,
             date = item.date.toString(),
@@ -163,10 +205,12 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
             getApplication(), item.medication.id, item.date.toString(), item.time
         )
 
-        if (status == DoseStatus.TAKEN) {
+        if (status == DoseStatus.TAKEN && stockBefore != null) {
             val updated = repo.data.value.medications.firstOrNull { it.id == item.medication.id }
-            val remaining = updated?.stockRemaining
-            if (updated != null && remaining != null && remaining <= updated.stockThreshold) {
+            val stockAfter = updated?.stockRemaining
+            if (updated != null && stockAfter != null &&
+                Reminders.shouldStockAlert(stockBefore, stockAfter, updated.stockThreshold)
+            ) {
                 Reminders.showStockAlert(getApplication(), updated)
             }
         }
@@ -179,6 +223,62 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
         return ScheduleEngine.adherence(
             d.medications, d.logs, start, end, LocalDateTime.now(), d.doseOverrides
         )
+    }
+
+    /**
+     * 连续全勤天数：从今天（或昨天，今天还没服完不打断连胜）往前数，
+     * 每天都"全部计划内的药都服了"的连续天数。
+     * 同时返回历史最长连胜，给"历史最长 X 天"的展示。
+     */
+    fun streak(): Pair<Int, Int> {
+        val d = repo.data.value
+        if (d.medications.none { !it.archived }) return 0 to 0
+
+        fun dayFullyTaken(date: LocalDate): Boolean {
+            val items = ScheduleEngine.dosesForDate(d.medications, d.logs, date, d.doseOverrides)
+            if (items.isEmpty()) return false
+            // 漏服或跳过都不算全勤；主动跳过是用户决定，不算失败但也不算全勤
+            return items.all { it.status == DoseStatus.TAKEN }
+        }
+
+        val today = LocalDate.now()
+        // 今天没服完不打断连胜（从昨天数），但今天全勤会+1
+        var current = 0
+        var cursor = if (dayFullyTaken(today)) today else today.minusDays(1)
+        // 今天没服药计划（空清单）也不打断——往昨天找
+        while (cursor >= LocalDate.of(2020, 1, 1)) {
+            if (dayFullyTaken(cursor)) {
+                current++
+                cursor = cursor.minusDays(1)
+            } else {
+                // 没有计划的日子跳过（不贡献也不打断）：停药日/无计划日
+                val items = ScheduleEngine.dosesForDate(d.medications, d.logs, cursor, d.doseOverrides)
+                if (items.isEmpty()) {
+                    cursor = cursor.minusDays(1)
+                    continue
+                }
+                break
+            }
+        }
+
+        // 历史最长：从首条记录日扫到今天。数据量大时最多几百次日循环，
+        // 每次 dosesForDate 是内存遍历，可接受（统计页非高频路径）
+        val earliest = d.logs.minOfOrNull { LocalDate.parse(it.date) } ?: return current to current
+        var best = 0
+        var run = 0
+        var day = earliest
+        while (!day.isAfter(today)) {
+            if (dayFullyTaken(day)) {
+                run++
+                if (run > best) best = run
+            } else {
+                val items = ScheduleEngine.dosesForDate(d.medications, d.logs, day, d.doseOverrides)
+                if (items.isNotEmpty()) run = 0
+                // 空计划日不断连胜
+            }
+            day = day.plusDays(1)
+        }
+        return current to maxOf(best, current)
     }
 
     /** 某天的完成情况，用于日历上色。 */
@@ -194,7 +294,11 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
             taken == items.size -> DayStatus.ALL_TAKEN
             missed == 0 && skipped == 0 && taken == 0 -> DayStatus.UPCOMING
             taken > 0 -> DayStatus.PARTIAL
-            else -> DayStatus.MISSED
+            // 全部主动跳过：与依从率口径一致（跳过≠漏服），日历不标红
+            skipped == items.size - taken -> DayStatus.SKIPPED
+            // 有漏服才标红；部分跳过 + 部分待服（未到点）算部分完成
+            missed > 0 -> DayStatus.MISSED
+            else -> DayStatus.PARTIAL
         }
     }
 

@@ -1,5 +1,7 @@
 package com.jian.pillreminder.domain
 
+import kotlinx.serialization.Serializable
+
 /**
  * 药名形近字纠错。
  *
@@ -16,6 +18,7 @@ package com.jian.pillreminder.domain
 object MedNameCorrector {
 
     /** 一次纠正的记录，用于在界面上告诉用户"我把什么改成了什么"。 */
+    @Serializable
     data class Fix(val from: String, val to: String)
 
     data class Result(val text: String, val fixes: List<Fix>) {

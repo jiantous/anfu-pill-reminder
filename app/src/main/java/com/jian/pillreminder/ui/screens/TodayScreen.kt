@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Today
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,7 +40,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -75,6 +75,7 @@ import com.jian.pillreminder.ui.components.EmptyState
 import com.jian.pillreminder.ui.components.GroupLabel
 import com.jian.pillreminder.ui.components.MedBadge
 import com.jian.pillreminder.ui.components.TimePickerDialog
+import com.jian.pillreminder.ui.components.WavyLinearProgress
 import com.jian.pillreminder.ui.theme.medColorAt
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -88,6 +89,8 @@ fun TodayScreen(
     vm: MedViewModel,
     onOpenMedication: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** 点低库存横幅时跳到药箱页（管理库存的入口在那边）。 */
+    onOpenMeds: () -> Unit = {},
     permissionBanner: (@Composable () -> Unit)? = null
 ) {
     val doses by vm.dosesForSelectedDate.collectAsState()
@@ -97,6 +100,14 @@ fun TodayScreen(
 
     // 正在挪时间的那一次服药，null = 没在挪
     var rescheduling by remember { mutableStateOf<DoseItem?>(null) }
+
+    // 未来日期打卡的确认：翻到明天就能点"已服用"，容易手滑或误以为
+    // 是今天的药——先确认一句再记（补录过去的日期不拦：那是明确意图）
+    var pendingFutureTake by remember { mutableStateOf<DoseItem?>(null) }
+    fun toggle(item: DoseItem) {
+        if (item.date.isAfter(LocalDate.now())) pendingFutureTake = item
+        else vm.toggleTaken(item)
+    }
 
     LaunchedEffect(Unit) { vm.refreshNow() }
 
@@ -136,7 +147,7 @@ fun TodayScreen(
         }
 
         if (lowStock.isNotEmpty()) {
-            item { LowStockBanner(lowStock) }
+            item { LowStockBanner(lowStock, onOpenMeds) }
         }
 
         if (total == 0) {
@@ -145,7 +156,8 @@ fun TodayScreen(
                 EmptyState(
                     icon = Icons.Filled.Today,
                     title = if (noMedsAtAll) "还没有添加药品" else "这一天不用吃药",
-                    subtitle = if (noMedsAtAll) "" else "按你设定的用药周期，今天没有需要服用的药"
+                    subtitle = if (noMedsAtAll) "点右下角「+」添加第一种药，到点会提醒你"
+                    else "按你设定的用药周期，今天没有需要服用的药"
                 )
             }
             if (noMedsAtAll) {
@@ -166,7 +178,7 @@ fun TodayScreen(
             label = "已错过", count = overdue.size,
             labelColor = errorColor,
             doses = overdue, now = now,
-            onToggle = { vm.toggleTaken(it) },
+            onToggle = { toggle(it) },
             onSkip = { vm.markSkipped(it) },
             onOpen = { onOpenMedication(it) },
             onReschedule = { rescheduling = it },
@@ -177,7 +189,7 @@ fun TodayScreen(
             label = "待服用", count = pending.size,
             labelColor = primaryColor,
             doses = pending, now = now,
-            onToggle = { vm.toggleTaken(it) },
+            onToggle = { toggle(it) },
             onSkip = { vm.markSkipped(it) },
             onOpen = { onOpenMedication(it) },
             onReschedule = { rescheduling = it },
@@ -188,7 +200,7 @@ fun TodayScreen(
             label = "已完成", count = done.size,
             labelColor = neutralColor,
             doses = done, now = now,
-            onToggle = { vm.toggleTaken(it) },
+            onToggle = { toggle(it) },
             onSkip = { vm.markSkipped(it) },
             onOpen = { onOpenMedication(it) },
             onReschedule = { rescheduling = it },
@@ -212,6 +224,30 @@ fun TodayScreen(
             onConfirm = { h, m ->
                 vm.rescheduleDose(item, com.jian.pillreminder.data.TimeOfDay(h, m))
                 rescheduling = null
+            }
+        )
+    }
+
+    // 未来日期打卡的确认弹窗
+    pendingFutureTake?.let { item ->
+        val daysAhead = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), item.date)
+        AlertDialog(
+            onDismissRequest = { pendingFutureTake = null },
+            title = { Text("记录 ${item.date} 的服药？") },
+            text = {
+                Text(
+                    if (daysAhead == 1L) "这是明天的药。现在记录表示你打算提前服下，确定吗？"
+                    else "这是 ${daysAhead} 天后的药，现在就记录为已服用吗？"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.toggleTaken(item)
+                    pendingFutureTake = null
+                }) { Text("记录") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingFutureTake = null }) { Text("取消") }
             }
         )
     }
@@ -361,29 +397,27 @@ private fun ProgressSummary(taken: Int, total: Int) {
                 )
             }
             Spacer(Modifier.height(16.dp))
-            LinearProgressIndicator(
-                progress = { animated },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(10.dp)
-                    .clip(CircleShape),
+            // M3E 官方波浪进度条（卡片样式保持原版不动）
+            WavyLinearProgress(
+                progress = animated,
+                modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
-                gapSize = 0.dp,
-                drawStopIndicator = {}
+                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
             )
         }
     }
 }
 
 @Composable
-private fun LowStockBanner(meds: List<Medication>) {
+private fun LowStockBanner(meds: List<Medication>, onOpenMeds: () -> Unit) {
     Card(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer
-        )
+        ),
+        // 整卡可点：看到"快用完了"直接跳药箱管理库存
+        onClick = onOpenMeds
     ) {
         Row(
             Modifier.padding(20.dp),
@@ -401,6 +435,7 @@ private fun LowStockBanner(meds: List<Medication>) {
                     style = MaterialTheme.typography.bodySmall
                 )
             }
+            Icon(Icons.Filled.ChevronRight, contentDescription = "去药箱管理库存")
         }
     }
 }

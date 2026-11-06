@@ -24,11 +24,15 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material3.AlertDialog
+import com.jian.pillreminder.domain.DoseItem
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -54,6 +58,7 @@ import com.jian.pillreminder.ui.DayStatus
 import com.jian.pillreminder.ui.MedViewModel
 import com.jian.pillreminder.ui.components.EmptyState
 import com.jian.pillreminder.ui.components.MiniBarChart
+import com.jian.pillreminder.ui.components.WavyLinearProgress
 import com.jian.pillreminder.ui.components.ProgressRing
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -63,11 +68,24 @@ import java.time.format.DateTimeFormatter
 private val RangeOptions = listOf(7 to "近 7 天", 30 to "近 30 天", 90 to "近 90 天")
 
 @Composable
-fun HistoryScreen(vm: MedViewModel, modifier: Modifier = Modifier) {
+fun HistoryScreen(
+    vm: MedViewModel,
+    modifier: Modifier = Modifier,
+    /** 导出服药记录 CSV（分享给医生用）。回调用天数，null=全部。 */
+    onExportCsv: ((Int?) -> Unit)? = null
+) {
     val data by vm.data.collectAsState()
     var rangeIndex by remember { mutableIntStateOf(0) }
     var month by remember { mutableStateOf(YearMonth.now()) }
     var selectedDay by remember { mutableStateOf<LocalDate?>(null) }
+
+    // 日历翻月边界：上界=首条记录所在月，下界=当前月。无记录时两侧都不可翻
+    val earliestMonth = remember(data.logs) {
+        data.logs.minOfOrNull { it.date }?.let { YearMonth.from(LocalDate.parse(it)) }
+    }
+    val currentMonth = remember { YearMonth.now() }
+    val canPrev = earliestMonth != null && month > earliestMonth
+    val canNext = month < currentMonth
 
     if (data.medications.isEmpty()) {
         EmptyState(
@@ -88,14 +106,24 @@ fun HistoryScreen(vm: MedViewModel, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                RangeOptions.forEachIndexed { index, (_, label) ->
-                    SegmentedButton(
-                        selected = rangeIndex == index,
-                        onClick = { rangeIndex = index },
-                        shape = SegmentedButtonDefaults.itemShape(index, RangeOptions.size),
-                        label = { Text(label) }
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SingleChoiceSegmentedButtonRow(Modifier.weight(1f)) {
+                    RangeOptions.forEachIndexed { index, (_, label) ->
+                        SegmentedButton(
+                            selected = rangeIndex == index,
+                            onClick = { rangeIndex = index },
+                            shape = SegmentedButtonDefaults.itemShape(index, RangeOptions.size),
+                            label = { Text(label) }
+                        )
+                    }
+                }
+                // 导出入口在统计页：想给医生看记录的人第一反应是找这里
+                if (onExportCsv != null) {
+                    TextButton(onClick = { onExportCsv(RangeOptions[rangeIndex].first) }) {
+                        Icon(Icons.Filled.IosShare, contentDescription = null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("导出")
+                    }
                 }
             }
         }
@@ -109,6 +137,8 @@ fun HistoryScreen(vm: MedViewModel, modifier: Modifier = Modifier) {
                 vm = vm,
                 month = month,
                 selected = selectedDay,
+                canPrev = canPrev,
+                canNext = canNext,
                 onPrevMonth = { month = month.minusMonths(1) },
                 onNextMonth = { month = month.plusMonths(1) },
                 onSelectDay = { selectedDay = if (selectedDay == it) null else it }
@@ -254,7 +284,28 @@ private fun WeeklyChart(vm: MedViewModel) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp)) {
-            Text("最近 7 天完成度", style = MaterialTheme.typography.titleMedium)
+            // 标题行右侧放 7 天总完成度；波浪条承载整体水位，柱状图保留明细
+            val weekRate = if (values.isEmpty()) 0f else values.sum() / values.size
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "最近 7 天完成度",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "${(weekRate * 100).toInt()}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            WavyLinearProgress(
+                progress = weekRate,
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
             Spacer(Modifier.height(16.dp))
             // 直接画真实数据。没有打卡记录时各区全是 0，柱状图自然显示一排空柱，
             // 这是正常的空数据表现，不需要演示数据也不需要引导文案。
@@ -268,6 +319,9 @@ private fun MonthCalendarCard(
     vm: MedViewModel,
     month: YearMonth,
     selected: LocalDate?,
+    /** 还能不能往前/往后翻月（无记录的月份翻过去只有空格子）。 */
+    canPrev: Boolean,
+    canNext: Boolean,
     onPrevMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onSelectDay: (LocalDate) -> Unit
@@ -289,10 +343,10 @@ private fun MonthCalendarCard(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f).padding(start = 4.dp)
                 )
-                IconButton(onClick = onPrevMonth) {
+                IconButton(onClick = onPrevMonth, enabled = canPrev) {
                     Icon(Icons.Filled.ChevronLeft, contentDescription = "上个月")
                 }
-                IconButton(onClick = onNextMonth) {
+                IconButton(onClick = onNextMonth, enabled = canNext) {
                     Icon(Icons.Filled.ChevronRight, contentDescription = "下个月")
                 }
             }
@@ -351,6 +405,7 @@ private fun MonthCalendarCard(
                 LegendDot("全部服用", MaterialTheme.colorScheme.primary)
                 LegendDot("部分服用", MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
                 LegendDot("有漏服", MaterialTheme.colorScheme.error)
+                LegendDot("已跳过", MaterialTheme.colorScheme.surfaceVariant)
             }
         }
     }
@@ -371,6 +426,9 @@ private fun DayCell(
         // 与图例同步：部分服用 = primary 降透明度（同色深浅语义，见图例处注释）
         status == DayStatus.PARTIAL -> MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
         status == DayStatus.MISSED -> MaterialTheme.colorScheme.error
+        // 全部主动跳过：中性灰，不标红——跳过是用户决定，不算漏服
+        //（与依从率口径一致）
+        status == DayStatus.SKIPPED -> MaterialTheme.colorScheme.surfaceVariant
         status == DayStatus.UPCOMING -> MaterialTheme.colorScheme.surfaceVariant
         else -> Color.Transparent
     }
@@ -379,6 +437,7 @@ private fun DayCell(
         status == DayStatus.ALL_TAKEN -> MaterialTheme.colorScheme.onPrimary
         status == DayStatus.PARTIAL -> MaterialTheme.colorScheme.onPrimary
         status == DayStatus.MISSED -> MaterialTheme.colorScheme.onError
+        status == DayStatus.SKIPPED -> MaterialTheme.colorScheme.onSurfaceVariant
         status == DayStatus.UPCOMING -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSurface
     }
@@ -427,6 +486,52 @@ private fun DayDetailCard(vm: MedViewModel, day: LocalDate) {
     }
     val now = LocalDateTime.now()
 
+    // 点某一条弹操作菜单：补卡/跳过/清除——"看明细→改状态"闭环，
+    // 不用再回今天页翻日期
+    var actionItem by remember { mutableStateOf<DoseItem?>(null) }
+    actionItem?.let { target ->
+        AlertDialog(
+            onDismissRequest = { actionItem = null },
+            title = { Text(target.medication.name) },
+            text = {
+                Text("${day.format(DateTimeFormatter.ofPattern("M 月 d 日"))} ${target.time.format()} · ${Reminders.formatDosage(target.medication.dosage)}${target.medication.unit}")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    when (target.status) {
+                        DoseStatus.TAKEN ->
+                            // 已服用 → 清除记录（撤销）
+                            vm.clearDose(target)
+                        DoseStatus.SKIPPED -> vm.clearDose(target)
+                        DoseStatus.PENDING ->
+                            // 待服用/漏服 → 记为已服用（补卡）
+                            vm.toggleTaken(target)
+                    }
+                    actionItem = null
+                }) {
+                    Text(
+                        when (target.status) {
+                            DoseStatus.TAKEN -> "撤销服用记录"
+                            DoseStatus.SKIPPED -> "撤销跳过"
+                            DoseStatus.PENDING -> "记为已服用"
+                        }
+                    )
+                }
+            },
+            dismissButton = {
+                // 待服用的还可以改跳过；已处理的给个次操作切换
+                if (target.status == DoseStatus.PENDING) {
+                    TextButton(onClick = {
+                        vm.markSkipped(target)
+                        actionItem = null
+                    }) { Text("记为跳过") }
+                } else {
+                    TextButton(onClick = { actionItem = null }) { Text("取消") }
+                }
+            }
+        )
+    }
+
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
@@ -439,7 +544,13 @@ private fun DayDetailCard(vm: MedViewModel, day: LocalDate) {
                 day.format(DateTimeFormatter.ofPattern("M 月 d 日")) + " 明细",
                 style = MaterialTheme.typography.titleMedium
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "点某一条可以补记或修改状态",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(10.dp))
             if (items.isEmpty()) {
                 Text(
                     "这天没有需要服用的药",
@@ -449,7 +560,10 @@ private fun DayDetailCard(vm: MedViewModel, day: LocalDate) {
             } else {
                 items.forEach { item ->
                     Row(
-                        Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { actionItem = item }
+                            .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val (icon, tint, label) = when {

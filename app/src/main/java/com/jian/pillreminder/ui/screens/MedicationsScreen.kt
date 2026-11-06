@@ -42,7 +42,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -71,6 +70,7 @@ import com.jian.pillreminder.ui.components.DatePickerDialog
 import com.jian.pillreminder.ui.components.EmptyState
 import com.jian.pillreminder.ui.components.GroupLabel
 import com.jian.pillreminder.ui.components.MedBadge
+import com.jian.pillreminder.ui.components.WavyLinearProgress
 import com.jian.pillreminder.ui.theme.medColorAt
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -147,9 +147,9 @@ fun MedicationsScreen(
             onArchive = { vm.toggleArchived(it) },
             onDelete = { pendingDelete = it },
             onEditStock = { stockEditing = it },
-            onPause = { med ->
-                if (ScheduleEngine.isPausedNow(med)) vm.setPaused(med, null) else pausing = med
-            }
+            // 停用中不提供"暂停"：药已整体停用，再叠一层暂停日期，
+            // 恢复用药后的行为解释不清（先恢复还是先到期？）
+            onPause = null
         )
 
         item { Spacer(Modifier.height(72.dp)) }
@@ -222,7 +222,8 @@ private fun LazyListScope.MedSection(
     onArchive: (Medication) -> Unit,
     onDelete: (Medication) -> Unit,
     onEditStock: (Medication) -> Unit,
-    onPause: (Medication) -> Unit
+    /** null = 该分节不提供"暂停"入口（停用中的药暂停语义混乱）。 */
+    onPause: ((Medication) -> Unit)?
 ) {
     if (meds.isEmpty()) return
     item { GroupLabel(text = label, count = count, color = labelColor) }
@@ -241,7 +242,7 @@ private fun LazyListScope.MedSection(
             onArchive = { onArchive(med) },
             onDelete = { onDelete(med) },
             onEditStock = { onEditStock(med) },
-            onPause = { onPause(med) }
+            onPause = onPause?.let { cb -> { cb(med) } }
         )
     }
 }
@@ -363,7 +364,8 @@ private fun MedicationCard(
     onArchive: () -> Unit,
     onDelete: () -> Unit,
     onEditStock: () -> Unit,
-    onPause: () -> Unit
+    /** null = 不显示"暂停"菜单项（停用中的药）。 */
+    onPause: (() -> Unit)?
 ) {
     val palette = medColorAt(med.colorIndex)
     val (badgeBg, badgeFg) = palette.colors()
@@ -431,16 +433,20 @@ private fun MedicationCard(
                         )
                         // 暂停 vs 停用的区别：暂停是临时的、有恢复日期，
                         // 疗程和周期锚点都不动；停用是长期不吃了
-                        DropdownMenuItem(
-                            text = { Text(if (paused) "取消暂停" else "暂停几天") },
-                            leadingIcon = {
-                                Icon(
-                                    if (paused) Icons.Filled.PlayArrow else Icons.Filled.PauseCircle,
-                                    null
-                                )
-                            },
-                            onClick = { menuOpen = false; onPause() }
-                        )
+                        // 暂停 vs 停用：暂停是临时的、有恢复日期，疗程和周期
+                        // 锚点都不动；停用是长期不吃了
+                        if (onPause != null) {
+                            DropdownMenuItem(
+                                text = { Text(if (paused) "取消暂停" else "暂停几天") },
+                                leadingIcon = {
+                                    Icon(
+                                        if (paused) Icons.Filled.PlayArrow else Icons.Filled.PauseCircle,
+                                        null
+                                    )
+                                },
+                                onClick = { menuOpen = false; onPause() }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text(if (med.archived) "恢复用药" else "停用（保留记录）") },
                             leadingIcon = {
@@ -546,17 +552,14 @@ private fun MedicationCard(
                     )
                 }
                 Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { (remaining / full).toFloat().coerceIn(0f, 1f) },
+                // M3E 官方波浪进度条（卡片样式保持原版不动）
+                WavyLinearProgress(
+                    progress = (remaining / full).toFloat().coerceIn(0f, 1f),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(end = 8.dp)
-                        .height(6.dp)
-                        .clip(CircleShape),
+                        .padding(end = 8.dp),
                     color = if (low) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    gapSize = 0.dp,
-                    drawStopIndicator = {}
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             }
         }
