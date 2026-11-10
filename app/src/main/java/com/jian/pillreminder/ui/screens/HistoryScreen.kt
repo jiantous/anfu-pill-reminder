@@ -10,9 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -61,7 +59,6 @@ import com.jian.pillreminder.ui.DayStatus
 import com.jian.pillreminder.ui.MedViewModel
 import com.jian.pillreminder.ui.components.EmptyState
 import com.jian.pillreminder.ui.components.MiniBarChart
-import com.jian.pillreminder.ui.components.ProgressRing
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth

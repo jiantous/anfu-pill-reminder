@@ -225,12 +225,6 @@ data class AppData(
     val healthBannerDismissed: Boolean = false,
     /** 上次成功导出备份的日期（ISO yyyy-MM-dd），null 表示从未备份。 */
     val lastBackupDate: String? = null,
-    /**
-     * 服药提醒的自定义铃声（系统铃声选择器选出的 content URI 字符串）。
-     * null = 系统默认闹钟铃声。刻意不进备份：content URI 指向本机媒体库，
-     * 换机后必然失效，备过去只会造成"恢复了却没生效"的困惑。
-     */
-    val ringtoneUri: String? = null,
     // 曾有 backupFolderUri 和 backupReminderDismissed。
     // 前者是授权文件夹的持久化 URI，后者是关闭备份横幅。
     // 备份横幅已删，这两个字段也没用了。老数据文件里残留的键会被忽略。

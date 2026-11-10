@@ -228,15 +228,23 @@ fun TodayScreen(
         )
     }
 
-    // 未来日期打卡的确认弹窗
+    // 未来日期打卡的确认弹窗。已服用状态再点击 = 撤销，文案必须跟着动作走：
+    // 弹"记录"结果执行的却是撤销，用户会以为点错了
     pendingFutureTake?.let { item ->
         val daysAhead = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), item.date)
+        val isUndo = item.status == DoseStatus.TAKEN
         AlertDialog(
             onDismissRequest = { pendingFutureTake = null },
-            title = { Text("记录 ${item.date} 的服药？") },
+            title = {
+                Text(
+                    if (isUndo) "撤销 ${item.date} 的服药记录？"
+                    else "记录 ${item.date} 的服药？"
+                )
+            },
             text = {
                 Text(
-                    if (daysAhead == 1L) "这是明天的药。现在记录表示你打算提前服下，确定吗？"
+                    if (isUndo) "这条提前服用的记录将被清除，恢复为待服用。"
+                    else if (daysAhead == 1L) "这是明天的药。现在记录表示你打算提前服下，确定吗？"
                     else "这是 ${daysAhead} 天后的药，现在就记录为已服用吗？"
                 )
             },
@@ -244,7 +252,7 @@ fun TodayScreen(
                 TextButton(onClick = {
                     vm.toggleTaken(item)
                     pendingFutureTake = null
-                }) { Text("记录") }
+                }) { Text(if (isUndo) "撤销" else "记录") }
             },
             dismissButton = {
                 TextButton(onClick = { pendingFutureTake = null }) { Text("取消") }

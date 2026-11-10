@@ -27,7 +27,7 @@ androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-androidx-material3 = { group = "androidx.compose.material3", name = "material3", version = "1.5.0-rc01" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version = "1.5.0-rc01" } # 显式钉定：BOM 2026.06.01 仍映射 1.4.0（无波浪 API）；发版前复核 BOM 是否收编 1.5.x，收编后删本钉定
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }

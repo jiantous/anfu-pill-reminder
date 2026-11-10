@@ -13,7 +13,6 @@ import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.RingtoneManager
-import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -40,12 +39,14 @@ object Reminders {
      * - v1：CATEGORY_REMINDER + 默认通知音，系统免打扰下会被静音——晚间那次药
      *   恰好撞在很多人的免打扰时段里。v2 改用闹钟音频属性并申请绕过免打扰，
      *   语义上也更对：这本来就是闹钟。
-     * - v2 → v3：支持用户在设置里自选提醒铃声。声音属性同样锁死，换铃声必须
-     *   换通道。音频属性（闹钟 + 绕免打扰）原样继承。
+     * - v2 → v3：曾支持自选铃声（id 动态化方案），因厂商 ROM 渠道行为差异
+     *   与维护成本，1.1.19 起移除该功能，回到固定 id + 系统默认闹钟铃声。
+     *   想换提醒声的用户可去系统通知设置里对「服药提醒」渠道自行调整。
      */
     const val CHANNEL_DOSE = "dose_reminders_v3"
     private const val CHANNEL_DOSE_LEGACY = "dose_reminders"
     private const val CHANNEL_DOSE_LEGACY_V2 = "dose_reminders_v2"
+    private const val CHANNEL_DOSE_PREFIX = "dose_reminders_"
     const val CHANNEL_STOCK = "stock_alerts"
 
     const val EXTRA_MED_ID = "med_id"
@@ -60,27 +61,6 @@ object Reminders {
     /** 暂停到期、今天恢复用药的提醒。 */
     const val ACTION_RESUME = "com.jian.pillreminder.RESUME"
 
-    /**
-     * 把存储的铃声 URI 字符串解析成可用的 Uri。
-     * null / 空串 / 解析失败 / 铃声已被系统删除（getRingtone 查不到）都回退
-     * 默认闹钟铃声——选过的铃声可能因清理媒体库而消失，别让通知变无声。
-     */
-    internal fun resolveRingtoneUri(context: Context, stored: String?): Uri {
-        val default = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        if (stored.isNullOrBlank()) return default
-        val uri = runCatching { Uri.parse(stored) }.getOrNull() ?: return default
-        return if (RingtoneManager.getRingtone(context, uri) != null) uri else default
-    }
-
-    /** 设置页展示用：当前铃声的名字。null/无效回「默认闹钟铃声」。 */
-    fun ringtoneDisplayName(context: Context, stored: String?): String {
-        if (stored.isNullOrBlank()) return "默认闹钟铃声"
-        val uri = runCatching { Uri.parse(stored) }.getOrNull()
-            ?: return "默认闹钟铃声"
-        val title = RingtoneManager.getRingtone(context, uri)?.getTitle(context)
-        return if (title.isNullOrBlank()) "已选铃声" else title
-    }
-
     fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
@@ -93,13 +73,10 @@ object Reminders {
             description = "到点提醒你吃药。按闹钟处理，开启免打扰时也会响。"
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 350, 250, 350)
-            // 用闹钟音频属性：闹钟类通知在免打扰下默认放行，
+            // 用闹钟音频属性 + 系统默认闹钟铃声：闹钟类通知在免打扰下默认放行，
             // 而普通提醒类会被静音，晚间那次药最容易因此漏掉。
             setSound(
-                resolveRingtoneUri(
-                    context,
-                    MedRepository.get(context).data.value.ringtoneUri
-                ),
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
                 AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(AudioAttributes.USAGE_ALARM)
@@ -119,23 +96,17 @@ object Reminders {
         nm.createNotificationChannel(dose)
         nm.createNotificationChannel(stock)
 
-        // 删掉 v1/v2 通道，否则系统通知设置里会并列多个"服药提醒"让人困惑。
-        // 用户在旧通道上做过的开关不会迁移，这是换通道的既有代价；
-        // 换来的是免打扰下能正常响、以及自选铃声生效。
+        // 清理历史版本与内测版残留的旧通道，否则系统通知设置里会
+        // 并列多个"服药提醒"让人困惑：
+        // - v1 (dose_reminders) / v2 (dose_reminders_v2)：历代正式版
+        // - dose_reminders_<hash> / dose_reminders_default：1.1.19 内测期间
+        //   的动态 id 方案（铃声哈希编入渠道 id），正式版已回固定 v3
+        // 按前缀统一收掉，v3 本身（也是该前缀）排除在外。
+        nm.notificationChannels
+            .filter { it.id.startsWith(CHANNEL_DOSE_PREFIX) && it.id != CHANNEL_DOSE }
+            .forEach { runCatching { nm.deleteNotificationChannel(it.id) } }
         runCatching { nm.deleteNotificationChannel(CHANNEL_DOSE_LEGACY) }
         runCatching { nm.deleteNotificationChannel(CHANNEL_DOSE_LEGACY_V2) }
-
-        // 自选铃声的生效机制：Android 对已存在的渠道 id 会忽略整个
-        // createNotificationChannel 调用（包括声音），换铃声必须先删再建
-        // 同 id 渠道——删除后重建，系统视为新渠道，新声音才会挂上。
-        // 代价是用户在系统设置里对该渠道的自定义会回到 App 默认，
-        // 但这是"铃声要能换"的唯一路径。只在铃声非默认时做（默认铃声
-        // 首次创建后不需要动，避免每次冷启动都重置用户设置）。
-        val storedUri = MedRepository.get(context).data.value.ringtoneUri
-        if (storedUri != null) {
-            runCatching { nm.deleteNotificationChannel(CHANNEL_DOSE) }
-            nm.createNotificationChannel(dose)
-        }
     }
 
     fun hasNotificationPermission(context: Context): Boolean =
@@ -657,13 +628,10 @@ object Reminders {
             .setAutoCancel(!ongoing)
             .setOngoing(ongoing)
             .setContentIntent(openApp)
-            // Android 8+ 声音以渠道为准，这里的 setSound 只对 API 24-25（无渠道）
-            // 生效——低版本设备自选铃声也走 resolveRingtoneUri。
+            // Android 8+ 声音以渠道为准，这里的 setSound 只对 API 24-25
+            // （无渠道的老设备）生效，与渠道同用系统默认闹钟铃声。
             .setSound(
-                resolveRingtoneUri(
-                    context,
-                    MedRepository.get(context).data.value.ringtoneUri
-                ),
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
                 AudioManager.STREAM_ALARM
             )
             .setVibrate(longArrayOf(0, 350, 250, 350))
@@ -696,8 +664,8 @@ object Reminders {
         for (time in times) {
             runCatching { nm.cancel(notificationId(med.id, time)) }
         }
-        // 库存告警用的是另一个 id
-        runCatching { nm.cancel(med.id.hashCode() and 0x0FFFFFFF) }
+        // 库存告警用的是另一个 id（与剂量通知分域，见 showStockAlert 处注释）
+        runCatching { nm.cancel((med.id.hashCode() and 0x0FFFFFFF) xor 0x7A7A) }
     }
 
     /**
@@ -745,7 +713,13 @@ object Reminders {
             .build()
 
         runCatching {
-            NotificationManagerCompat.from(context).notify(med.id.hashCode() and 0x0FFFFFFF, n)
+            // 库存通知 id 加固定偏移（xor 0x7A7A）与剂量通知彻底分域：
+            // 两者原本共享数值域，理论碰撞时剂量通知会覆盖库存通知（反之亦然），
+            // dismissAllFor 也会误取消对方。0x7A7A 的位翻转保证两域不相交
+            //（与延后槽 0x5A5A 的隔离同理）。
+            NotificationManagerCompat.from(context).notify(
+                (med.id.hashCode() and 0x0FFFFFFF) xor 0x7A7A, n
+            )
         }
     }
 

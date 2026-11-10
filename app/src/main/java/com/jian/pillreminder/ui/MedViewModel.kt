@@ -106,7 +106,6 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
      * key = 药品 id（新建统一用 "new"），退出编辑页时清掉。
      */
     private val _editDrafts = mutableStateMapOf<String, EditDraftState>()
-    val editDrafts: Map<String, EditDraftState> get() = _editDrafts
 
     fun editDraftFor(id: String, initial: Medication): EditDraftState =
         _editDrafts.getOrPut(id) { EditDraftState(initial) }
@@ -309,8 +308,6 @@ class MedViewModel(app: Application) : AndroidViewModel(app) {
     fun setOngoingNotification(on: Boolean) = repo.setOngoingNotification(on)
 
     fun setUiScale(scale: Float) = repo.setUiScale(scale)
-
-    fun setRingtoneUri(uri: String?) = repo.setRingtoneUri(uri)
 
     fun markSetupGuideShown() = repo.markSetupGuideShown()
 

@@ -17,9 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -35,7 +33,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -66,18 +63,12 @@ fun SettingsScreen(
     snoozeMinutes: Int,
     ongoingNotification: Boolean,
     uiScale: Float,
-    /** 当前提醒铃声的显示名（"默认闹钟铃声"或所选铃声标题）。 */
-    ringtoneName: String,
-    /** 是否仍是默认铃声——控制"恢复默认"按钮的可用态。 */
-    ringtoneIsDefault: Boolean,
     logCount: Int,
     busy: Boolean,
     message: String?,
     onSnoozeMinutesChange: (Int) -> Unit,
     onOngoingNotificationChange: (Boolean) -> Unit,
     onUiScaleChange: (Float) -> Unit,
-    onPickRingtone: () -> Unit,
-    onResetRingtone: () -> Unit,
     onOpenReminderSetup: () -> Unit,
     onClearMessage: () -> Unit,
     onOpenBackup: () -> Unit,
@@ -127,26 +118,6 @@ fun SettingsScreen(
                             label = { Text("$m 分钟") }
                         )
                     }
-                }
-                Spacer(Modifier.height(12.dp))
-                Text("提醒铃声", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "当前：$ringtoneName",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FilledTonalButton(
-                        onClick = onPickRingtone,
-                        modifier = Modifier.weight(1f)
-                    ) { Text("选择铃声") }
-                    FilledTonalButton(
-                        onClick = onResetRingtone,
-                        enabled = !ringtoneIsDefault,
-                        modifier = Modifier.weight(1f)
-                    ) { Text("恢复默认") }
                 }
                 Spacer(Modifier.height(12.dp))
                 FilledTonalButton(
@@ -214,7 +185,7 @@ fun SettingsScreen(
                     Text("备份与恢复")
                 }
 
-                }
+            }
 
             // ---- 关于 ----
             SettingsSection("关于") {

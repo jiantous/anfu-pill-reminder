@@ -37,16 +37,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.Canvas
 import com.jian.pillreminder.ui.theme.ExpressiveSpring
 
 // 药品图标集见 MedIconSet.kt（按剂型分类的手绘矢量）
@@ -121,53 +116,6 @@ fun EmptyState(
     }
 }
 
-/** 圆环进度，用于依从率。M3 Expressive：弹性动画替代线性 tween。 */
-@Composable
-fun ProgressRing(
-    progress: Float,
-    modifier: Modifier = Modifier,
-    strokeWidth: Dp = 12.dp,
-    trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    color: Color = MaterialTheme.colorScheme.primary,
-    center: @Composable () -> Unit = {}
-) {
-    val animated by animateFloatAsState(
-        targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = ExpressiveSpring,
-        label = "ring"
-    )
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        // 必须 fillMaxSize：只给宽度时 Canvas 高度会塌成 0，圆环画不出来
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val stroke = strokeWidth.toPx()
-            val diameter = kotlin.math.min(size.width, size.height) - stroke
-            val topLeft = Offset(
-                (size.width - diameter) / 2f,
-                (size.height - diameter) / 2f
-            )
-            val arcSize = Size(diameter, diameter)
-            drawArc(
-                color = trackColor,
-                startAngle = 0f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = Stroke(width = stroke, cap = StrokeCap.Round)
-            )
-            drawArc(
-                color = color,
-                startAngle = -90f,
-                sweepAngle = 360f * animated,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = Stroke(width = stroke, cap = StrokeCap.Round)
-            )
-        }
-        center()
-    }
-}
 
 /** 小圆形勾选按钮，用于"已服用"。M3 Expressive：弹性缩放反馈。 */
 @Composable
