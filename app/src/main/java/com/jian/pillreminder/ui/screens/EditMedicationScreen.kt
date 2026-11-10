@@ -46,9 +46,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -308,7 +305,7 @@ fun EditMedicationScreen(
                             )
                         }
                     }
-                    TextButton(onClick = { commit() }) { Text("保存") }
+                    // 保存动作只在表单底部通栏按钮，顶栏不放重复入口
                 }
             )
         }
@@ -416,41 +413,42 @@ fun EditMedicationScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(12.dp))
-                Row {
-                    OutlinedTextField(
-                        value = dosageText,
-                        onValueChange = {
-                            updateDosageText(sanitizeDosageInput(it))
-                            dosageError = false
-                        },
-                        label = { Text("单次剂量") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = dosageError,
-                        supportingText = if (dosageError) {
-                            { Text("请输入大于 0 的剂量，例如 0.5", color = MaterialTheme.colorScheme.error) }
-                        } else null,
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    OutlinedTextField(
-                        value = draft.unit,
-                        onValueChange = { raw ->
-                            val u = raw.take(6)
-                            // 图标按剂型分类，而单位就是剂型的直接线索：填"粒"多半是胶囊。
-                            // 只在用户还没手动挑过图标时跟着变，挑过就尊重他的选择。
-                            updateMed(if (iconPickedByUser) {
-                                draft.copy(unit = u)
-                            } else {
-                                draft.copy(unit = u, iconIndex = suggestIconForUnit(u))
-                            })
-                        },
-                        label = { Text("单位") },
-                        placeholder = { Text("片") },
-                        singleLine = true,
-                        modifier = Modifier.weight(0.8f)
-                    )
-                }
+                OutlinedTextField(
+                    value = dosageText,
+                    onValueChange = {
+                        updateDosageText(sanitizeDosageInput(it))
+                        dosageError = false
+                    },
+                    label = { Text("单次剂量") },
+                    supportingText = if (dosageError) {
+                        { Text("请输入大于 0 的剂量，例如 0.5", color = MaterialTheme.colorScheme.error) }
+                    } else {
+                        // 支持小数是本 App 的特性（半片 0.5），常驻提示
+                        { Text("支持小数：0.5 = 半片，0.25 = 四分之一片") }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = dosageError,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = draft.unit,
+                    onValueChange = { raw ->
+                        val u = raw.take(6)
+                        // 图标按剂型分类，而单位就是剂型的直接线索：填"粒"多半是胶囊。
+                        // 只在用户还没手动挑过图标时跟着变，挑过就尊重他的选择。
+                        updateMed(if (iconPickedByUser) {
+                            draft.copy(unit = u)
+                        } else {
+                            draft.copy(unit = u, iconIndex = suggestIconForUnit(u))
+                        })
+                    },
+                    label = { Text("单位") },
+                    placeholder = { Text("片") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = draft.note,
@@ -529,13 +527,20 @@ fun EditMedicationScreen(
 
             // ---- 用药频率 ----
             SettingCard("用药频率", 2, onPlaced = { sectionOffsets[2] = it }) {
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    FreqTab.entries.forEachIndexed { index, tab ->
-                        SegmentedButton(
+                // FilterChip 组（与进餐关系、设置页稍后提醒同语言；
+                // SegmentedButton 是工具型形态，与其他选择器不统一）
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FreqTab.entries.forEach { tab ->
+                        FilterChip(
                             selected = freqTab == tab,
                             onClick = { updateFreqTab(tab) },
-                            shape = SegmentedButtonDefaults.itemShape(index, FreqTab.entries.size),
-                            label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) }
+                            label = { Text(tab.label) },
+                            leadingIcon = if (freqTab == tab) {
+                                { Icon(Icons.Filled.Check, null, Modifier.size(18.dp)) }
+                            } else null
                         )
                     }
                 }
@@ -698,33 +703,32 @@ fun EditMedicationScreen(
                     )
                 )
                 Spacer(Modifier.height(8.dp))
-                Row {
-                    OutlinedTextField(
-                        value = stockText,
-                        onValueChange = {
-                            updateStockText(sanitizeDosageInput(it))
-                            stockError = false
-                        },
-                        label = { Text("现有库存") },
-                        placeholder = { Text("留空=不管") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = stockError,
-                        supportingText = if (stockError) {
-                            { Text("填了内容必须是有效数字，或清空表示不管", color = MaterialTheme.colorScheme.error) }
-                        } else null,
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    OutlinedTextField(
-                        value = thresholdText,
-                        onValueChange = { updateThresholdText(sanitizeDosageInput(it)) },
-                        label = { Text("续药提醒线") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                OutlinedTextField(
+                    value = stockText,
+                    onValueChange = {
+                        updateStockText(sanitizeDosageInput(it))
+                        stockError = false
+                    },
+                    label = { Text("现有库存") },
+                    placeholder = { Text("留空=不管") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = stockError,
+                    supportingText = if (stockError) {
+                        { Text("填了内容必须是有效数字，或清空表示不管", color = MaterialTheme.colorScheme.error) }
+                    } else null,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = thresholdText,
+                    onValueChange = { updateThresholdText(sanitizeDosageInput(it)) },
+                    label = { Text("续药提醒线") },
+                    supportingText = { Text("库存低于该值提醒续药，默认 5") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             // ---- 外观 ----
@@ -903,6 +907,16 @@ private enum class DateField { START, END }
 private fun String.toPrettyDate(): String = runCatching {
     LocalDate.parse(this).format(DateTimeFormatter.ofPattern("yyyy 年 M 月 d 日"))
 }.getOrDefault(this)
+
+/**
+ * 单位下拉（M3E 标准 select 的等价实现）。单位本质是枚举（片/粒/mL/滴/单位），
+ * 自由输入允许打错字；下拉从源头杜绝。
+ *
+ * 实现说明：官方 ExposedDropdownMenuBox 在 material3 1.5.0-rc01 下
+ * BoxScope 成员函数跨文件解析失败（编译期 Unresolved），改用等价组合——
+ * readOnly TextField + toggleable（无障碍语义正确的整框点击）+ 标准下拉。
+ * 点选仍触发图标联动（"粒"→胶囊图标，见 suggestIconForUnit）。
+ */
 
 /**
  * 一行可点的日期。点了弹填写对话框。

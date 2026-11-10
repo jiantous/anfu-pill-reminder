@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
@@ -29,14 +32,14 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.AlertDialog
 import com.jian.pillreminder.domain.DoseItem
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -58,7 +61,6 @@ import com.jian.pillreminder.ui.DayStatus
 import com.jian.pillreminder.ui.MedViewModel
 import com.jian.pillreminder.ui.components.EmptyState
 import com.jian.pillreminder.ui.components.MiniBarChart
-import com.jian.pillreminder.ui.components.WavyLinearProgress
 import com.jian.pillreminder.ui.components.ProgressRing
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -67,6 +69,7 @@ import java.time.format.DateTimeFormatter
 
 private val RangeOptions = listOf(7 to "近 7 天", 30 to "近 30 天", 90 to "近 90 天")
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HistoryScreen(
     vm: MedViewModel,
@@ -106,17 +109,24 @@ fun HistoryScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SingleChoiceSegmentedButtonRow(Modifier.weight(1f)) {
-                    RangeOptions.forEachIndexed { index, (_, label) ->
-                        SegmentedButton(
-                            selected = rangeIndex == index,
-                            onClick = { rangeIndex = index },
-                            shape = SegmentedButtonDefaults.itemShape(index, RangeOptions.size),
-                            label = { Text(label) }
-                        )
-                    }
+            // 范围切换用 FilterChip 组（与设置页稍后提醒、加药页频率同语言；
+            // SegmentedButton 是工具型形态，与卡片流不搭）；导出按钮行尾独立
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RangeOptions.forEachIndexed { index, (_, label) ->
+                    FilterChip(
+                        selected = rangeIndex == index,
+                        onClick = { rangeIndex = index },
+                        label = { Text(label) },
+                        leadingIcon = if (rangeIndex == index) {
+                            { Icon(Icons.Filled.Check, null, Modifier.size(18.dp)) }
+                        } else null
+                    )
                 }
+                Spacer(Modifier.weight(1f))
                 // 导出入口在统计页：想给医生看记录的人第一反应是找这里
                 if (onExportCsv != null) {
                     TextButton(onClick = { onExportCsv(RangeOptions[rangeIndex].first) }) {
@@ -169,24 +179,25 @@ private fun AdherenceCard(stat: ScheduleEngine.Adherence) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(Modifier.size(120.dp)) {
-                    ProgressRing(
-                        progress = stat.rate ?: 0f,
+                Box(Modifier.size(120.dp), contentAlignment = Alignment.Center) {
+                    // M3E 官方波浪圆环（CircularWavyProgressIndicator）：120dp 原版尺寸，
+                    // 只把描边换成波浪样式，与三处波浪进度条统一进度语言
+                    CircularWavyProgressIndicator(
+                        progress = { stat.rate ?: 0f },
                         modifier = Modifier.fillMaxSize(),
-                        strokeWidth = 14.dp
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                stat.rate?.let { "${(it * 100).toInt()}%" } ?: "—",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                "已完成",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            stat.rate?.let { "${(it * 100).toInt()}%" } ?: "—",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "已完成",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 Spacer(Modifier.width(20.dp))
@@ -284,28 +295,9 @@ private fun WeeklyChart(vm: MedViewModel) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp)) {
-            // 标题行右侧放 7 天总完成度；波浪条承载整体水位，柱状图保留明细
-            val weekRate = if (values.isEmpty()) 0f else values.sum() / values.size
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "最近 7 天完成度",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    "${(weekRate * 100).toInt()}%",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            WavyLinearProgress(
-                progress = weekRate,
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+            // 总完成度由上方依从率卡的波浪圆环表达（范围选 7 天时即本卡数据），
+            // 这里只画逐日明细——两个百分比、两条波浪的重复展示已去除
+            Text("近 7 天逐日完成度", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(16.dp))
             // 直接画真实数据。没有打卡记录时各区全是 0，柱状图自然显示一排空柱，
             // 这是正常的空数据表现，不需要演示数据也不需要引导文案。

@@ -124,6 +124,18 @@ object Reminders {
         // 换来的是免打扰下能正常响、以及自选铃声生效。
         runCatching { nm.deleteNotificationChannel(CHANNEL_DOSE_LEGACY) }
         runCatching { nm.deleteNotificationChannel(CHANNEL_DOSE_LEGACY_V2) }
+
+        // 自选铃声的生效机制：Android 对已存在的渠道 id 会忽略整个
+        // createNotificationChannel 调用（包括声音），换铃声必须先删再建
+        // 同 id 渠道——删除后重建，系统视为新渠道，新声音才会挂上。
+        // 代价是用户在系统设置里对该渠道的自定义会回到 App 默认，
+        // 但这是"铃声要能换"的唯一路径。只在铃声非默认时做（默认铃声
+        // 首次创建后不需要动，避免每次冷启动都重置用户设置）。
+        val storedUri = MedRepository.get(context).data.value.ringtoneUri
+        if (storedUri != null) {
+            runCatching { nm.deleteNotificationChannel(CHANNEL_DOSE) }
+            nm.createNotificationChannel(dose)
+        }
     }
 
     fun hasNotificationPermission(context: Context): Boolean =

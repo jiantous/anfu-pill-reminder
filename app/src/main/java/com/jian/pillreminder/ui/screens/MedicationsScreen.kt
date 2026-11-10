@@ -685,6 +685,9 @@ private fun StockDialog(
         mutableStateOf(med.stockRemaining?.let { Reminders.formatDosage(it) } ?: "")
     }
     var thresholdText by remember { mutableStateOf(Reminders.formatDosage(med.stockThreshold)) }
+    // 补药模式：直接填"这次买了多少"，系统算 原库存 + 补入 = 新库存。
+    // 原先要自己心算 152+37 这种加法（7 种药各有零有整），容易错。
+    var refillText by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -706,6 +709,29 @@ private fun StockDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                // ---- 补药快捷区：填了补入量，"现有数量"自动变为合计 ----
+                if (med.stockRemaining != null) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = refillText,
+                        onValueChange = { refillText = it.filter { c -> c.isDigit() || c == '.' } },
+                        label = { Text("或：本次补入") },
+                        suffix = { Text(med.unit) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        supportingText = {
+                            val refill = refillText.toDoubleOrNull()
+                            if (refill != null) {
+                                // 原库存 + 补入：以对话框打开时的原库存为基数
+                                val base = med.stockRemaining ?: 0.0
+                                Text("保存后库存 = ${Reminders.formatDosage(base)} + ${Reminders.formatDosage(refill)} = ${Reminders.formatDosage(base + refill)} ${med.unit}")
+                            } else {
+                                Text("买了多少填多少，库存自动帮你加好")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = thresholdText,
@@ -720,7 +746,13 @@ private fun StockDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                onSave(stockText.toDoubleOrNull(), thresholdText.toDoubleOrNull())
+                // 补入量优先：填了就按 原库存+补入 保存；没填走"现有数量"直改
+                val refill = refillText.toDoubleOrNull()
+                if (refill != null && med.stockRemaining != null) {
+                    onSave((med.stockRemaining + refill), thresholdText.toDoubleOrNull())
+                } else {
+                    onSave(stockText.toDoubleOrNull(), thresholdText.toDoubleOrNull())
+                }
             }) { Text("保存") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
